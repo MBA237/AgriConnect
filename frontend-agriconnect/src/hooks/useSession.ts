@@ -4,7 +4,16 @@ export type UserRole = 'agriculteur' | 'acheteur-pro' | 'acheteur-particulier'
 
 export interface UserSession {
   token: string | null
-  user: { id: string; name: string; email: string; role: UserRole } | null
+  user:
+    | {
+        id: string
+        name: string
+        email: string
+        role: UserRole
+        phone?: string
+        gender?: string
+      }
+    | null
 }
 
 const STORAGE_KEY = 'agriConnectSession'
