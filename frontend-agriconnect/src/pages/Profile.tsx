@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import useSession from '../hooks/useSession'
-import { updateProfile } from '../services/api'
+import { updateProfile, getUserStats } from '../services/api'
 
 export default function Profile() {
   const { session, logout, updateUser } = useSession()
@@ -34,6 +34,29 @@ export default function Profile() {
     companyName: (session.user as any).companyName ?? '',
     siret: (session.user as any).siret ?? '',
   })
+
+  const [userStats, setUserStats] = useState<{ rating?: number; totalSales?: number; contracts?: number; memberSinceYears?: number } | null>(null)
+  const [userStatsLoading, setUserStatsLoading] = useState(false)
+  const [userStatsError, setUserStatsError] = useState<string | null>(null)
+
+  React.useEffect(() => {
+    let active = true
+    const load = async () => {
+      setUserStatsLoading(true)
+      setUserStatsError(null)
+      try {
+        const res = await getUserStats()
+        if (active) setUserStats(res.data ?? null)
+      } catch (err) {
+        console.error('Erreur chargement stats utilisateur', err)
+        if (active) setUserStatsError('Impossible de charger les statistiques utilisateur')
+      } finally {
+        if (active) setUserStatsLoading(false)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -111,11 +134,20 @@ export default function Profile() {
 
         <div style={{ flex: 1 }}>
           <div className="stats-grid">
-            <div className="stat-card"><span className="icon"><i className="fas fa-star"></i></span><div className="number">4.8</div><div className="label">Note moyenne</div></div>
-            <div className="stat-card"><span className="icon"><i className="fas fa-box"></i></span><div className="number">47</div><div className="label">Ventes totales</div></div>
-            <div className="stat-card"><span className="icon"><i className="fas fa-handshake"></i></span><div className="number">12</div><div className="label">Contrats signés</div></div>
-            <div className="stat-card"><span className="icon"><i className="fas fa-calendar-alt"></i></span><div className="number">2 ans</div><div className="label">Membre depuis</div></div>
+            <div className="stat-card"><span className="icon"><i className="fas fa-star"></i></span><div className="number">{userStatsLoading ? '…' : Number(userStats?.rating ?? 1.1).toFixed(1)}</div><div className="label">Note moyenne</div></div>
+            <div className="stat-card"><span className="icon"><i className="fas fa-box"></i></span><div className="number">{userStatsLoading ? '…' : (userStats?.totalSales ?? 0)}</div><div className="label">Ventes totales</div></div>
+            <div className="stat-card"><span className="icon"><i className="fas fa-handshake"></i></span><div className="number">{userStatsLoading ? '…' : (userStats?.contracts ?? 0)}</div><div className="label">Contrats signés</div></div>
+            <div className="stat-card"><span className="icon"><i className="fas fa-calendar-alt"></i></span><div className="number">{userStatsLoading ? '…' : (userStats?.memberSinceYears ? `${userStats.memberSinceYears} ans` : '—')}</div><div className="label">Membre depuis</div></div>
           </div>
+
+          {userStatsError && (
+            <div className="alert alert-error" style={{ marginTop: 12 }}>
+              <div className="alert-body">
+                <div className="alert-title">API indisponible</div>
+                <div className="alert-message">Impossible de charger les statistiques utilisateur.</div>
+              </div>
+            </div>
+          )}
 
             {/* Role-specific summary */}
             {role === 'agriculteur' && (

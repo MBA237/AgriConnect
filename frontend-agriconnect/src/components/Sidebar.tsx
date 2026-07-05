@@ -2,11 +2,12 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 
 const links = [
-  { label: 'Tableau de bord', to: '/' },
-  { label: 'Onboarding', to: '/onboarding' },
-  { label: 'Choix du rôle', to: '/role-selection' },
-  { label: 'Connexion', to: '/auth' },
-  { label: 'Profil', to: '/profile' },
+  { label: 'Accueil', to: '/home', description: 'Votre tableau de bord' },
+  { label: 'Catalogue', to: '/catalog', description: 'Explorer les produits' },
+  { label: 'Panier', to: '/cart', description: 'Voir votre panier' },
+  { label: 'Marché Dynamique', to: '/market', description: 'Voir les prix en direct' },
+  { label: 'Mes commandes', to: '/orders/my', description: 'Suivre vos commandes' },
+  { label: 'Profil', to: '/profile', description: 'Gérer votre compte' },
 ]
 
 export default function Sidebar() {
@@ -22,7 +23,8 @@ export default function Sidebar() {
               `nav-item${isActive ? ' active' : ''}`
             }
           >
-            {link.label}
+            <span className="sidebar-link-title">{link.label}</span>
+            <span className="sidebar-link-desc">{link.description}</span>
           </NavLink>
         ))}
       </div>

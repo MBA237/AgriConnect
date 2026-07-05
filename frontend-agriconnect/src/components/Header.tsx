@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import useSession from '../hooks/useSession'
 
+const quickLinks = [
+  { to: '/home', label: 'Accueil' },
+  { to: '/catalog', label: 'Catalogue' },
+  { to: '/offers/new', label: 'Publier' },
+  { to: '/profile', label: 'Profil' },
+]
+
 export default function Header() {
   const { session } = useSession()
   const navigate = useNavigate()
@@ -59,10 +66,24 @@ export default function Header() {
 
   return (
     <header className="site-header">
-      <div className="logo">
-        <span className="leaf-mark"><i className="fas fa-leaf"></i></span>
-        Agri<span>Connect</span>
-        <span className="badge-web">Web</span>
+      <div className="brand-group">
+        <div className="logo">
+          <span className="leaf-mark"><i className="fas fa-leaf"></i></span>
+          Agri<span>Connect</span>
+          <span className="badge-web">Web</span>
+        </div>
+
+        <nav className="header-nav" aria-label="Navigation rapide">
+          {quickLinks.map(link => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `header-nav-link${isActive ? ' active' : ''}`}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
 
       <div className="header-actions">
