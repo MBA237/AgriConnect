@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import useSession, { UserRole } from '../hooks/useSession'
 import hero1 from '../assets/hero1.png'
 import agriculteurImg from '../assets/agriculteurImg.png'
 import acheteurImg from '../assets/acheteurImg.png'
 import particulierImg from '../assets/particulierImg.png'
-import api, { requestOtp, verifyOtp } from '../services/api'
+import { requestOtp, verifyOtp } from '../services/api'
 import { useToasts } from '../components/ToastProvider'
 type AuthProps = {
   role?: UserRole
@@ -17,6 +17,44 @@ function generateVerificationCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+function getStoredAccounts() {
+  try {
+    const raw = localStorage.getItem('agriConnectAccounts')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveStoredAccounts(accounts: any[]) {
+  localStorage.setItem('agriConnectAccounts', JSON.stringify(accounts))
+}
+
+function buildAccountFromInput(role: UserRole, firstName: string, lastName: string, email: string, phone: string, gender: string) {
+  const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || email || phone || 'Utilisateur'
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedPhone = phone.trim()
+  return {
+    id: `local-${Date.now()}`,
+    name: displayName,
+    email: normalizedEmail || `${normalizedPhone || 'demo'}@agriconnect.local`,
+    role,
+    phone: normalizedPhone || undefined,
+    gender: gender || undefined,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+function findAccountByContact(accounts: any[], email: string, phone: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedPhone = phone.trim()
+  return accounts.find((account: any) => {
+    const emailMatch = normalizedEmail && account.email?.toLowerCase() === normalizedEmail
+    const phoneMatch = normalizedPhone && account.phone === normalizedPhone
+    return emailMatch || phoneMatch
+  })
+}
+
 export default function Auth({ role: propRole, onClose, modal }: AuthProps = {}) {
   const [searchParams] = useSearchParams()
   const role = (propRole || (searchParams.get('role') || 'acheteur-particulier')) as UserRole
@@ -25,16 +63,25 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState('')
-  const [mode, setMode] = useState<'register' | 'login'>('register')
   const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'phone'>('email')
   const [code, setCode] = useState('')
   const [sentCode, setSentCode] = useState('')
+  const [otpRequested, setOtpRequested] = useState(false)
   const [stage, setStage] = useState<'request' | 'confirm'>('request')
-  const { login } = useSession()
+  const initialMode = (searchParams.get('mode') as 'register' | 'login' | null) === 'login' ? 'login' : 'register'
+  const [mode, setMode] = useState<'register' | 'login'>(initialMode)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { login, isAuthenticated } = useSession()
   const navigate = useNavigate()
   // use toast provider
   
   const toasts = useToasts()
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/home', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const heading = useMemo(() => {
     if (stage === 'request') return mode === 'register' ? "Inscription" : 'Connexion'
@@ -42,7 +89,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   }, [stage, mode])
   
   const handleSendCode = () => {
-    // send verification code based on chosen delivery method
+    if (isSubmitting) return
     if (deliveryMethod === 'email' && !email.trim()) {
       alert('Veuillez renseigner une adresse e-mail valide.')
       return
@@ -61,22 +108,28 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
       payload.gender = gender
     }
 
+    const localCode = generateVerificationCode()
+    setSentCode(localCode)
+    setOtpRequested(true)
+    setStage('confirm')
+
+    setIsSubmitting(true)
     requestOtp(payload)
       .then(res => {
-        // backend should not return OTP in production; use returned info if available for dev
-        if (res?.data?.code) setSentCode(res.data.code)
-        else setSentCode('')
+        if (res?.data?.code) {
+          setSentCode(String(res.data.code))
+        }
         alert('Code envoyé. Vérifiez votre boîte e-mail ou téléphone.')
       })
       .catch(err => {
         console.error(err)
-        alert(err?.response?.data?.message || 'Erreur lors de l\'envoi du code')
+        alert(err?.response?.data?.message || 'Le serveur est indisponible, mais un code de vérification local a été généré.')
       })
+      .finally(() => setIsSubmitting(false))
   }
 
   const handleNext = () => {
-    // Validate personal info before moving to connection step
-    if (!firstName.trim() || !lastName.trim() || !gender.trim()) {
+    if (mode === 'register' && (!firstName.trim() || !lastName.trim() || !gender.trim())) {
       alert("Veuillez renseigner votre prénom, nom et sexe.")
       return
     }
@@ -84,11 +137,16 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   }
 
   const handleConfirm = () => {
-    // verify code with backend
-    const payload: any = { deliveryMethod, code }
+    if (isSubmitting) return
+    const payload: any = { deliveryMethod, code, mode }
     if (deliveryMethod === 'email') payload.email = email
     else payload.phone = phone
 
+    const normalizedCode = code.trim()
+    const accounts = getStoredAccounts()
+    const existingAccount = findAccountByContact(accounts, email, phone)
+
+    setIsSubmitting(true)
     verifyOtp(payload)
       .then(res => {
         const token = res?.data?.token
@@ -96,17 +154,49 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
         if (token && user) {
           login(token, user)
           alert(mode === 'register' ? 'Inscription réussie !' : 'Connexion réussie !')
-          // close modal (if any) then navigate to profile
           if (onClose) onClose()
-          navigate('/profile')
-        } else {
-          alert('Réponse inattendue du serveur.')
+          navigate('/home', { replace: true })
+          return
         }
+
+        if (normalizedCode && normalizedCode === sentCode) {
+          const account = mode === 'login' && existingAccount
+            ? existingAccount
+            : buildAccountFromInput(role, firstName, lastName, email, phone, gender)
+          const nextAccounts = mode === 'login' && existingAccount
+            ? accounts
+            : [...accounts.filter((item: any) => item.email !== account.email && item.phone !== account.phone), account]
+          saveStoredAccounts(nextAccounts)
+          login('local-token', account)
+          alert(mode === 'register' ? 'Inscription réussie !' : 'Connexion réussie !')
+          if (onClose) onClose()
+          navigate('/home', { replace: true })
+          return
+        }
+
+        alert('Code de vérification invalide. Veuillez réessayer.')
       })
       .catch(err => {
         console.error(err)
-        alert(err?.response?.data?.message || 'Code de vérification invalide.')
+        if (normalizedCode && normalizedCode === sentCode) {
+          const account = mode === 'login' && existingAccount
+            ? existingAccount
+            : buildAccountFromInput(role, firstName, lastName, email, phone, gender)
+          const nextAccounts = mode === 'login' && existingAccount
+            ? accounts
+            : [...accounts.filter((item: any) => item.email !== account.email && item.phone !== account.phone), account]
+          saveStoredAccounts(nextAccounts)
+          login('local-token', account)
+          alert(mode === 'register' ? 'Inscription réussie !' : 'Connexion réussie !')
+          if (onClose) onClose()
+          navigate('/home', { replace: true })
+        } else if (mode === 'login' && existingAccount) {
+          alert('Aucun compte trouvé avec ces coordonnées. Veuillez vous inscrire d’abord.')
+        } else {
+          alert(err?.response?.data?.error || err?.response?.data?.message || 'Code de vérification invalide. Veuillez réessayer.')
+        }
       })
+      .finally(() => setIsSubmitting(false))
   }
 
   const content = (
@@ -139,32 +229,54 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
 
       <p className="text-slate-600">
         {stage === 'request'
-          ? "Remplissez vos informations personnelles, puis cliquez sur Suivant pour choisir la méthode de connexion."
+          ? mode === 'register'
+            ? "Remplissez vos informations personnelles, puis cliquez sur Suivant pour choisir la méthode de connexion."
+            : "Saisissez votre e-mail ou votre téléphone pour recevoir le code de vérification."
           : `Choisissez la méthode (e-mail ou téléphone) puis envoyez le code.`}
       </p>
 
       {stage === 'request' ? (
         <div className="card space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="input-group">
-              <label>Prénom</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={event => setFirstName(event.target.value)}
-                placeholder="Prénom"
-              />
-            </div>
-            <div className="input-group">
-              <label>Nom</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={event => setLastName(event.target.value)}
-                placeholder="Nom"
-              />
-            </div>
-          </div>
+          {mode === 'register' ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="input-group">
+                  <label>Prénom</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={event => setFirstName(event.target.value)}
+                    placeholder="Prénom"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Nom</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={event => setLastName(event.target.value)}
+                    placeholder="Nom"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="input-group">
+                  <label>Sexe</label>
+                  <select value={gender} onChange={event => setGender(event.target.value)}>
+                    <option value="">Sélectionner</option>
+                    <option value="homme">Homme</option>
+                    <option value="femme">Femme</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>Préférences</label>
+                  <p className="text-sm text-slate-500">Vous choisirez la méthode de connexion à l'étape suivante.</p>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="input-group">
@@ -187,23 +299,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="input-group">
-              <label>Sexe</label>
-              <select value={gender} onChange={event => setGender(event.target.value)}>
-                <option value="">Sélectionner</option>
-                <option value="homme">Homme</option>
-                <option value="femme">Femme</option>
-                <option value="autre">Autre</option>
-              </select>
-            </div>
-            <div className="input-group">
-              <label>Préférences</label>
-              <p className="text-sm text-slate-500">Vous choisirez la méthode de connexion à l'étape suivante.</p>
-            </div>
-          </div>
-
-          <button type="button" onClick={handleNext} className="btn-primary w-full">
+          <button type="button" onClick={handleNext} className="btn-primary w-full" disabled={isSubmitting}>
             Suivant
           </button>
         </div>
@@ -252,9 +348,9 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
             />
           </div>
 
-          {!sentCode ? (
-            <button type="button" onClick={handleSendCode} className="btn-primary w-full">
-              Envoyer le code
+          {!otpRequested ? (
+            <button type="button" onClick={handleSendCode} className="btn-primary w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Envoi...' : 'Envoyer le code'}
             </button>
           ) : (
             <>
@@ -262,10 +358,20 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
                 <label>Code de vérification</label>
                 <input type="text" value={code} onChange={event => setCode(event.target.value)} placeholder="123456" />
               </div>
-              <button type="button" onClick={handleConfirm} className="btn-primary w-full">
-                Confirmer
+              <button type="button" onClick={handleConfirm} className="btn-primary w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Vérification...' : 'Confirmer'}
               </button>
-              <p className="text-sm text-slate-600">Code de démonstration : {sentCode}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCode('')
+                  handleSendCode()
+                }}
+                className="btn-outline w-full"
+              >
+                Renvoyer le code
+              </button>
+              {sentCode ? <p className="text-sm text-slate-600">Code de démonstration : {sentCode}</p> : null}
             </>
           )}
         </div>

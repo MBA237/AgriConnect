@@ -17,6 +17,12 @@ import MyOrders from './pages/MyOrders'
 import OrderDetail from './pages/OrderDetail'
 import OrderTracking from './pages/OrderTracking'
 import OrderHistory from './pages/OrderHistory'
+import Contracts from './pages/Contracts'
+import ContractCreate from './pages/ContractCreate'
+import ContractDetail from './pages/ContractDetail'
+import Traceability from './pages/Traceability'
+import TraceabilityDetail from './pages/TraceabilityDetail'
+import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
   return (
@@ -26,20 +32,27 @@ export default function App() {
         <Route path="onboarding" element={<Onboarding />} />
         <Route path="role-selection" element={<RoleSelection />} />
         <Route path="auth" element={<Auth />} />
-        <Route element={<MainLayout />}>
-          <Route path="home" element={<Home />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="catalog" element={<ProductCatalog />} />
-          <Route path="products/:id" element={<ProductDetail />} />
-          <Route path="offers/new" element={<CreateOffer />} />
-          <Route path="offers/edit/:id" element={<CreateOffer />} />
-          <Route path="market" element={<MarketDynamic />} />
-          <Route path="cart" element={<Cart />} />
-          <Route path="checkout" element={<Checkout />} />
-          <Route path="orders/my" element={<MyOrders />} />
-          <Route path="orders/:id" element={<OrderDetail />} />
-          <Route path="orders/:id/track" element={<OrderTracking />} />
-          <Route path="orders" element={<OrderHistory />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
+            <Route path="home" element={<Home />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="catalog" element={<ProductCatalog />} />
+            <Route path="products/:id" element={<ProductDetail />} />
+            <Route path="offers/new" element={<CreateOffer />} />
+            <Route path="offers/edit/:id" element={<CreateOffer />} />
+            <Route path="market" element={<MarketDynamic />} />
+            <Route path="cart" element={<Cart />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="orders/my" element={<MyOrders />} />
+            <Route path="orders/:id" element={<OrderDetail />} />
+            <Route path="orders/:id/track" element={<OrderTracking />} />
+            <Route path="orders" element={<OrderHistory />} />
+            <Route path="contracts" element={<Contracts />} />
+            <Route path="contracts/new" element={<ContractCreate />} />
+            <Route path="contracts/:id" element={<ContractDetail />} />
+            <Route path="traceability" element={<Traceability />} />
+            <Route path="traceability/:qrCode" element={<TraceabilityDetail />} />
+          </Route>
         </Route>
       </Routes>
     </ToastProvider>

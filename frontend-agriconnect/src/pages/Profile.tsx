@@ -1,10 +1,58 @@
-import React, { useState } from 'react'
-import useSession from '../hooks/useSession'
-import { updateProfile, getUserStats } from '../services/api'
+import React, { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import useSession, { UserRole } from '../hooks/useSession'
+import { updateProfile, getUserStats, me } from '../services/api'
+
+const roleOptions: { value: UserRole; label: string; description: string }[] = [
+  {
+    value: 'agriculteur',
+    label: 'Agriculteur',
+    description: 'Accédez à votre tableau de bord exploitation et à vos offres.',
+  },
+  {
+    value: 'acheteur-pro',
+    label: 'Acheteur Pro',
+    description: 'Gérez vos achats en gros et vos contrats.',
+  },
+  {
+    value: 'acheteur-particulier',
+    label: 'Acheteur Particulier',
+    description: 'Achetez des produits frais directement auprès des producteurs.',
+  },
+]
 
 export default function Profile() {
-  const { session, logout, updateUser } = useSession()
+  const { session, logout, updateUser, changeRole } = useSession()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(session.user?.role ?? null)
+
+  const buildInitialForm = (user: any) => ({
+    name: user?.name ?? '',
+    email: user?.email ?? '',
+    phone: user?.phone ?? '',
+    gender: user?.gender ?? '',
+    farmName: user?.farmName ?? '',
+    hectares: user?.hectares ?? '',
+    products: user?.products ?? '',
+    companyName: user?.companyName ?? '',
+    siret: user?.siret ?? '',
+  })
+
+  const [form, setForm] = useState<any>(() => buildInitialForm(session.user))
+
+  React.useEffect(() => {
+    if (session.user) {
+      setForm(buildInitialForm(session.user))
+    }
+  }, [session.user])
+
+  React.useEffect(() => {
+    if (session.user?.role) {
+      setSelectedRole(session.user.role)
+    }
+  }, [session.user?.role])
 
   if (!session.user) {
     return (
@@ -22,25 +70,28 @@ export default function Profile() {
 
   const role = session.user.role
 
-  const [form, setForm] = useState<any>({
-    name: session.user.name ?? '',
-    email: session.user.email ?? '',
-    phone: session.user.phone ?? '',
-    gender: session.user.gender ?? '',
-    // role-specific defaults (may be undefined)
-    farmName: (session.user as any).farmName ?? '',
-    hectares: (session.user as any).hectares ?? '',
-    products: (session.user as any).products ?? '',
-    companyName: (session.user as any).companyName ?? '',
-    siret: (session.user as any).siret ?? '',
-  })
-
   const [userStats, setUserStats] = useState<{ rating?: number; totalSales?: number; contracts?: number; memberSinceYears?: number } | null>(null)
   const [userStatsLoading, setUserStatsLoading] = useState(false)
   const [userStatsError, setUserStatsError] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const profileLoadKeyRef = useRef<string | null>(null)
 
   React.useEffect(() => {
     let active = true
+    if (!session.token) {
+      profileLoadKeyRef.current = null
+      return () => {
+        active = false
+      }
+    }
+
+    const loadKey = session.token
+    if (profileLoadKeyRef.current === loadKey) {
+      return () => {
+        active = false
+      }
+    }
+    profileLoadKeyRef.current = loadKey
     const load = async () => {
       setUserStatsLoading(true)
       setUserStatsError(null)
@@ -54,9 +105,36 @@ export default function Profile() {
         if (active) setUserStatsLoading(false)
       }
     }
+
+    const loadProfileFromDatabase = async () => {
+      if (!session.token) return
+      setProfileLoading(true)
+      try {
+        const res = await me()
+        const backendUser = res?.data
+        if (active && backendUser) {
+          const normalizedUser = {
+            id: backendUser.id || session.user?.id,
+            name: backendUser.name || backendUser.fullName || session.user?.name || 'Utilisateur',
+            email: backendUser.email || session.user?.email || '',
+            role: backendUser.role || session.user?.role || 'acheteur-particulier',
+            phone: backendUser.phone || session.user?.phone,
+            gender: backendUser.gender || session.user?.gender,
+          }
+          updateUser(normalizedUser)
+          setForm(buildInitialForm(normalizedUser))
+        }
+      } catch (err) {
+        console.error('Erreur chargement profil depuis la base', err)
+      } finally {
+        if (active) setProfileLoading(false)
+      }
+    }
+
     load()
+    loadProfileFromDatabase()
     return () => { active = false }
-  }, [])
+  }, [session.token])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -65,7 +143,6 @@ export default function Profile() {
 
   const handleSave = async () => {
     try {
-      // build payload with common fields + role-specific
       const payload: any = {
         name: form.name,
         email: form.email,
@@ -86,7 +163,10 @@ export default function Profile() {
 
       const res = await updateProfile(payload)
       const updated = res.data?.user ?? null
-      if (updated) updateUser(updated)
+      if (updated) {
+        updateUser(updated)
+        setForm(buildInitialForm(updated))
+      }
       setEditing(false)
       alert('Profil mis à jour')
     } catch (err) {
@@ -95,6 +175,26 @@ export default function Profile() {
       console.error(err)
       alert('Impossible de mettre à jour le profil')
     }
+  }
+
+  const handleLogout = () => {
+    logout()
+    navigate('/auth?mode=login', { replace: true })
+  }
+
+  const handleRoleSwitch = (nextRole: UserRole) => {
+    if (!session.user) {
+      return
+    }
+
+    if (session.user.role === nextRole) {
+      setShowRoleModal(false)
+      return
+    }
+
+    changeRole(nextRole)
+    setSelectedRole(nextRole)
+    setShowRoleModal(false)
   }
 
   return (
@@ -128,7 +228,9 @@ export default function Profile() {
             </span>
           </div>
           <div style={{ marginTop: 8 }}>
-            <button className="btn-small btn-small-outline" onClick={() => alert('Changer rôle')}> <i className="fas fa-exchange-alt"></i> Changer rôle</button>
+            <button className="btn-small btn-small-outline" onClick={() => { setSelectedRole(session.user?.role ?? null); setShowRoleModal(true) }}>
+              <i className="fas fa-exchange-alt"></i> Changer rôle
+            </button>
           </div>
         </div>
 
@@ -169,49 +271,51 @@ export default function Profile() {
 
           <div className="card" style={{ marginTop: 12 }}>
             <div className="block-row">
-              <i className="fas fa-phone" style={{ color: 'var(--primary)', width: 24 }}></i>
-              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{session.user?.phone ?? '+237 699 999 999'}</span>
+              <i className="fas fa-envelope" style={{ color: 'var(--primary)', width: 24 }}></i>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{session.user?.email ?? 'Non renseigné'}</span>
             </div>
             <div className="block-row">
-              <i className="fas fa-map-marker-alt" style={{ color: 'var(--primary)', width: 24 }}></i>
-              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Dschang, Région Ouest</span>
+              <i className="fas fa-phone" style={{ color: 'var(--primary)', width: 24 }}></i>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{session.user?.phone ?? 'Non renseigné'}</span>
             </div>
             <div className="block-row" style={{ borderBottom: 'none' }}>
-              <i className="fas fa-link" style={{ color: 'var(--primary)', width: 24 }}></i>
-              <span style={{ fontSize: 13, color: '#1E3722', fontFamily: 'monospace' }}>0x7a3f...9b2e</span>
-              <span className="badge-blockchain" style={{ fontSize: 7 }}>Blockchain</span>
+              <i className="fas fa-venus-mars" style={{ color: 'var(--primary)', width: 24 }}></i>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{session.user?.gender ? (session.user.gender === 'male' ? 'Homme' : session.user.gender === 'female' ? 'Femme' : 'Autre') : 'Non renseigné'}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <button className="btn-outline" style={{ flex: 1 }} onClick={() => setEditing(true)}><i className="fas fa-edit"></i> Modifier le profil</button>
-            <button className="btn-outline" style={{ flex: 1, borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={logout}><i className="fas fa-sign-out-alt"></i> Déconnexion</button>
+            <button className="btn-outline" style={{ flex: 1, borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={handleLogout}><i className="fas fa-sign-out-alt"></i> Déconnexion</button>
           </div>
         </div>
       </div>
 
       {editing && (
         <div style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3>Éditer le profil</h3>
-            <div className="grid-2 gap-6" style={{ marginTop: 12 }}>
-              <div>
-                <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Nom</label>
-                <input name="name" value={form.name} onChange={handleChange} className="input mt-3" />
+          <div className="card profile-edit">
+            <div className="profile-edit-header">
+              <h3>Éditer le profil</h3>
+              <p>Mettez à jour vos informations personnelles et vos détails de profil.</p>
+            </div>
+            <div className="profile-form-grid">
+              <div className="profile-field">
+                <label>Nom</label>
+                <input name="name" value={form.name} onChange={handleChange} className="profile-input" />
               </div>
-              <div>
-                <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Email</label>
-                <input name="email" value={form.email} onChange={handleChange} className="input mt-3" />
+              <div className="profile-field">
+                <label>Email</label>
+                <input name="email" value={form.email} onChange={handleChange} className="profile-input" />
               </div>
             </div>
-            <div className="grid-2 gap-6" style={{ marginTop: 12 }}>
-              <div>
-                <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Téléphone</label>
-                <input name="phone" value={form.phone} onChange={handleChange} className="input mt-3" />
+            <div className="profile-form-grid">
+              <div className="profile-field">
+                <label>Téléphone</label>
+                <input name="phone" value={form.phone} onChange={handleChange} className="profile-input" />
               </div>
-              <div>
-                <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Genre</label>
-                <select name="gender" value={form.gender} onChange={handleChange} className="input mt-3">
+              <div className="profile-field">
+                <label>Genre</label>
+                <select name="gender" value={form.gender} onChange={handleChange} className="profile-input">
                   <option value="">Non renseigné</option>
                   <option value="male">Homme</option>
                   <option value="female">Femme</option>
@@ -219,42 +323,90 @@ export default function Profile() {
                 </select>
               </div>
             </div>
-            {/* Role-specific edit fields */}
             {role === 'agriculteur' && (
-              <div className="grid-2 gap-6" style={{ marginTop: 12 }}>
-                <div>
-                  <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Nom de l'exploitation</label>
-                  <input name="farmName" value={form.farmName} onChange={handleChange} className="input mt-3" />
+              <div className="profile-form-grid">
+                <div className="profile-field">
+                  <label>Nom de l'exploitation</label>
+                  <input name="farmName" value={form.farmName} onChange={handleChange} className="profile-input" />
                 </div>
-                <div>
-                  <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Hectares</label>
-                  <input name="hectares" value={form.hectares} onChange={handleChange} className="input mt-3" />
+                <div className="profile-field">
+                  <label>Hectares</label>
+                  <input name="hectares" value={form.hectares} onChange={handleChange} className="profile-input" />
                 </div>
               </div>
             )}
 
             {role === 'agriculteur' && (
-              <div style={{ marginTop: 12 }}>
-                <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Produits principaux</label>
-                <input name="products" value={form.products} onChange={handleChange} className="input mt-3" />
+              <div className="profile-field">
+                <label>Produits principaux</label>
+                <input name="products" value={form.products} onChange={handleChange} className="profile-input" />
               </div>
             )}
 
             {role === 'acheteur-pro' && (
-              <div className="grid-2 gap-6" style={{ marginTop: 12 }}>
-                <div>
-                  <label className="text-sm uppercase tracking-[0.35em] text-slate-500">Raison sociale</label>
-                  <input name="companyName" value={form.companyName} onChange={handleChange} className="input mt-3" />
+              <div className="profile-form-grid">
+                <div className="profile-field">
+                  <label>Raison sociale</label>
+                  <input name="companyName" value={form.companyName} onChange={handleChange} className="profile-input" />
                 </div>
-                <div>
-                  <label className="text-sm uppercase tracking-[0.35em] text-slate-500">SIRET</label>
-                  <input name="siret" value={form.siret} onChange={handleChange} className="input mt-3" />
+                <div className="profile-field">
+                  <label>SIRET</label>
+                  <input name="siret" value={form.siret} onChange={handleChange} className="profile-input" />
                 </div>
               </div>
             )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div className="profile-actions">
               <button className="btn-primary" onClick={handleSave}>Enregistrer</button>
-              <button className="btn" onClick={() => setEditing(false)}>Annuler</button>
+              <button className="btn-outline" onClick={() => setEditing(false)}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRoleModal && (
+        <div className="auth-overlay" onClick={() => setShowRoleModal(false)}>
+          <div className="auth-modal" onClick={event => event.stopPropagation()} style={{ maxWidth: 720 }}>
+            <div className="card" style={{ padding: 24 }}>
+              <div className="page-header">
+                <div>
+                  <p className="eyebrow">CHANGER DE RÔLE</p>
+                  <h2>Choisissez votre nouveau profil</h2>
+                </div>
+              </div>
+              <p className="text-slate-600" style={{ marginBottom: 16 }}>
+                Ce changement met à jour votre rôle pour la session courante et l’affiche immédiatement dans l’interface.
+              </p>
+              <div className="role-grid">
+                {roleOptions.map(option => {
+                  const isSelected = selectedRole === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedRole(option.value)}
+                      className={`card card-clickable text-center ${isSelected ? 'selected-role' : ''}`}
+                    >
+                      <div className="role-card-header">
+                        <h3 className="text-xl font-semibold text-slate-900">{option.label}</h3>
+                      </div>
+                      <p className="mt-3 text-slate-600">{option.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="role-action" style={{ marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn-primary mt-6 w-full"
+                  disabled={!selectedRole}
+                  onClick={() => selectedRole && handleRoleSwitch(selectedRole)}
+                >
+                  Enregistrer le nouveau rôle
+                </button>
+                <button type="button" className="btn-small btn-small-outline" onClick={() => setShowRoleModal(false)} style={{ marginTop: 8 }}>
+                  Annuler
+                </button>
+              </div>
             </div>
           </div>
         </div>

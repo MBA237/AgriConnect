@@ -17,6 +17,14 @@ export default function Home() {
   useEffect(() => {
     let active = true
     const loadProducts = async () => {
+      if (!session.token) {
+        if (active) {
+          setProducts([])
+          setLoading(false)
+        }
+        return
+      }
+
       setLoading(true)
       try {
         const res = await getProducts({ sort: 'newest' })
@@ -35,13 +43,21 @@ export default function Home() {
   useEffect(() => {
     let active = true
     const loadStats = async () => {
+      if (!session.token) {
+        if (active) {
+          setStats(null)
+          setStatsLoading(false)
+          setStatsError(null)
+        }
+        return
+      }
+
       setStatsLoading(true)
       setStatsError(null)
       try {
         const res = await getMarketStats()
         if (active) setStats(res.data ?? null)
       } catch (err) {
-        console.error('Erreur chargement stats marché:', err)
         if (active) setStatsError('Impossible de charger les statistiques du marché')
       } finally {
         if (active) setStatsLoading(false)
@@ -57,12 +73,20 @@ export default function Home() {
   useEffect(() => {
     let active = true
     const loadOrders = async () => {
+      if (!session.token) {
+        if (active) {
+          setOrders([])
+          setOrdersLoading(false)
+        }
+        return
+      }
+
       setOrdersLoading(true)
       try {
         const res = await getMyOrders()
         if (active) setOrders(Array.isArray(res.data.orders) ? res.data.orders : [])
       } catch (err) {
-        console.error('Erreur chargement commandes:', err)
+        if (active) setOrders([])
       } finally {
         if (active) setOrdersLoading(false)
       }
@@ -153,9 +177,10 @@ export default function Home() {
 
       <div className="quick-actions">
         <Link to="/catalog" className="qa-item"><span className="icon"><i className="fas fa-chart-line"></i></span><span className="label">Marché</span></Link>
+        <Link to="/contracts" className="qa-item"><span className="icon"><i className="fas fa-file-contract"></i></span><span className="label">Contrats</span></Link>
+        <Link to="/traceability" className="qa-item"><span className="icon"><i className="fas fa-qrcode"></i></span><span className="label">Traçabilité</span></Link>
         <Link to="/profile" className="qa-item"><span className="icon"><i className="fas fa-file-signature"></i></span><span className="label">Profil</span></Link>
         <Link to={isFarmer ? '/offers/new' : '/catalog'} className="qa-item"><span className="icon"><i className="fas fa-seedling"></i></span><span className="label">{isFarmer ? 'Publier offre' : 'Explorer'}</span></Link>
-        <div className="qa-item"><span className="icon"><i className="fas fa-qrcode"></i></span><span className="label">Traçabilité</span></div>
       </div>
 
       <div className="section-title"><i className="fas fa-file-contract"></i> Contrats actifs</div>

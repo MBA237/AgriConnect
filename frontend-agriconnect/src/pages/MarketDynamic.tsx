@@ -11,6 +11,7 @@ export default function MarketDynamic() {
   const [history, setHistory] = useState<PriceHistoryData[]>([])
   const [orders, setOrders] = useState<LimitOrder[]>([])
   const [loading, setLoading] = useState(true)
+  const [marketNotice, setMarketNotice] = useState<string | null>(null)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [showOrderForm, setShowOrderForm] = useState(false)
   const [ws, setWs] = useState<WebSocket | null>(null)
@@ -28,12 +29,13 @@ export default function MarketDynamic() {
         ])
         const incomingPrices = Array.isArray(pricesRes.data.prices) ? pricesRes.data.prices : []
         setPrices(incomingPrices)
-        setOrders(ordersRes.data.orders)
+        setMarketNotice(pricesRes.data.meta?.message ?? null)
+        setOrders(ordersRes.data.orders || [])
         if (incomingPrices.length > 0) {
           setSelectedProductId(incomingPrices[0].productId)
         }
       } catch (err) {
-        toasts.push({ type: 'error', title: 'Erreur', message: 'Impossible de charger les prix.' })
+        setMarketNotice('Le service de marché est temporairement indisponible. Les données affichées sont limitées.')
       } finally {
         setLoading(false)
       }
@@ -73,6 +75,7 @@ export default function MarketDynamic() {
       try {
         const res = await getMarketPrices()
         setPrices(Array.isArray(res.data.prices) ? res.data.prices : [])
+        setMarketNotice(res.data.meta?.message ?? null)
       } catch (err) {
         console.error('Erreur lors du rafraîchissement des prix:', err)
       }
@@ -159,16 +162,17 @@ export default function MarketDynamic() {
     try {
       const res = await getMarketPrices()
       setPrices(Array.isArray(res.data.prices) ? res.data.prices : [])
+      setMarketNotice(res.data.meta?.message ?? null)
       toasts.push({ type: 'success', title: 'Succès', message: 'Prix mis à jour.' })
     } catch (err) {
-      toasts.push({ type: 'error', title: 'Erreur', message: 'Impossible de rafraîchir les prix.' })
+      setMarketNotice('Le service de marché est temporairement indisponible. Les données affichées sont limitées.')
     }
   }
 
   const handleOrderCreated = async () => {
     try {
       const res = await getLimitOrders()
-      setOrders(res.data.orders)
+      setOrders(res.data.orders || [])
     } catch (err) {
       console.error('Erreur lors du rechargement des ordres:', err)
     }
@@ -191,6 +195,15 @@ export default function MarketDynamic() {
           </button>
         </div>
       </div>
+
+      {marketNotice && (
+        <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid #f59e0b', background: '#fff8e1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+            <i className="fas fa-info-circle" style={{ color: '#f59e0b' }}></i>
+            <span>{marketNotice}</span>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="card">Chargement des prix...</div>

@@ -5,6 +5,8 @@ import useSession from '../hooks/useSession'
 const quickLinks = [
   { to: '/home', label: 'Accueil' },
   { to: '/catalog', label: 'Catalogue' },
+  { to: '/contracts', label: 'Contrats' },
+  { to: '/traceability', label: 'Traçabilité' },
   { to: '/offers/new', label: 'Publier' },
   { to: '/profile', label: 'Profil' },
 ]
