@@ -6,6 +6,8 @@ const links = [
   { label: 'Catalogue', to: '/catalog', description: 'Explorer les produits' },
   { label: 'Panier', to: '/cart', description: 'Voir votre panier' },
   { label: 'Marché Dynamique', to: '/market', description: 'Voir les prix en direct' },
+  { label: 'Financement', to: '/crowdfunding', description: 'Soutenir des projets agricoles' },
+  { label: 'Prédictions', to: '/predictions', description: 'Consulter les prévisions IA' },
   { label: 'Mes commandes', to: '/orders/my', description: 'Suivre vos commandes' },
   { label: 'Profil', to: '/profile', description: 'Gérer votre compte' },
 ]

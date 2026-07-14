@@ -107,6 +107,9 @@ export default function Home() {
           <div className="eyebrow">Ferme Agro Dschang · Région Ouest</div>
           <h2>{isFarmer ? `Bonjour, ${session.user?.name ?? 'Jean'}` : 'Bienvenue sur AgriConnect'}</h2>
           <p>{isFarmer ? 'Gérez vos offres, suivez vos ventes et publiez vos nouveaux produits en quelques secondes.' : 'Découvrez les dernières offres publiées et les produits disponibles autour de vous.'}</p>
+          <div style={{ marginTop: 18 }}>
+            <Link to={isFarmer ? '/offers/new' : '/catalog'} className="btn-primary">{isFarmer ? 'Publier une offre' : 'Explorer le marché'}</Link>
+          </div>
         </div>
       </div>
 

@@ -60,17 +60,24 @@ export default function Contracts() {
   }
 
   return (
-    <main className="page-content">
-      <section className="card space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Contrats</p>
-            <h1>Liste des contrats</h1>
-          </div>
-          <Link to="/contracts/new" className="btn-primary">Créer un contrat</Link>
+    <section className="page">
+      <div className="page-header">
+        <div>
+          <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Contrats</p>
+          <h1>Liste des contrats</h1>
         </div>
+        <Link to="/contracts/new" className="btn-primary">Créer un contrat</Link>
+      </div>
 
-        {error ? <div className="alert-danger">{error}</div> : null}
+      <div className="card space-y-6">
+        {error ? (
+          <div className="alert alert-error">
+            <div className="alert-body">
+              <div className="alert-title">Erreur</div>
+              <div className="alert-message">{error}</div>
+            </div>
+          </div>
+        ) : null}
 
         {loading ? (
           <p>Chargement...</p>
@@ -79,10 +86,10 @@ export default function Contracts() {
         ) : (
           <div className="space-y-4">
             {contracts.map(contract => (
-              <article key={contract.id} className="contract-card">
-                <div className="contract-header">
+              <article key={contract.id} className="card contract-card">
+                <div className="contract-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <div>
-                    <div className="product-name">{contract.title}</div>
+                    <div className="product-name" style={{ fontWeight: 800 }}>{contract.title}</div>
                     <div className="contract-details">
                       {contract.buyerName} → {contract.sellerName} • {contract.amount} {contract.currency}
                     </div>
@@ -90,7 +97,7 @@ export default function Contracts() {
                   <ContractStatus status={contract.status} />
                 </div>
 
-                <div className="contract-details">
+                <div className="contract-details" style={{ marginTop: 8 }}>
                   {contract.deliveryDate ? <>Livraison prévue : {contract.deliveryDate}</> : null}
                 </div>
 
@@ -120,7 +127,7 @@ export default function Contracts() {
             ))}
           </div>
         )}
-      </section>
-    </main>
+      </div>
+    </section>
   )
 }

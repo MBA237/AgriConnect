@@ -13,6 +13,9 @@ import CreateOffer from './pages/CreateOffer'
 import MarketDynamic from './pages/MarketDynamic'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
+import PricePredictions from './pages/PricePredictions'
+import YieldPredictions from './pages/YieldPredictions'
+import Recommendations from './pages/Recommendations'
 import MyOrders from './pages/MyOrders'
 import OrderDetail from './pages/OrderDetail'
 import OrderTracking from './pages/OrderTracking'
@@ -23,6 +26,14 @@ import ContractDetail from './pages/ContractDetail'
 import Traceability from './pages/Traceability'
 import TraceabilityDetail from './pages/TraceabilityDetail'
 import ProtectedRoute from './components/ProtectedRoute'
+import Crowdfunding from './pages/Crowdfunding'
+import ProjectDetail from './pages/ProjectDetail'
+import Notifications from './pages/Notifications'
+import Chat from './components/Chat'
+import DashboardFarmer from './pages/DashboardFarmer'
+import DashboardBuyer from './pages/DashboardBuyer'
+import AdminPanel from './pages/AdminPanel'
+import Predictions from './pages/Predictions'
 
 export default function App() {
   return (
@@ -52,6 +63,17 @@ export default function App() {
             <Route path="contracts/:id" element={<ContractDetail />} />
             <Route path="traceability" element={<Traceability />} />
             <Route path="traceability/:qrCode" element={<TraceabilityDetail />} />
+            <Route path="crowdfunding" element={<Crowdfunding />} />
+            <Route path="crowdfunding/:id" element={<ProjectDetail />} />
+            <Route path="dashboard/farmer" element={<DashboardFarmer />} />
+            <Route path="dashboard/buyer" element={<DashboardBuyer />} />
+            <Route path="admin" element={<AdminPanel />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="predictions" element={<Predictions />} />
+            <Route path="predictions/price" element={<PricePredictions />} />
+            <Route path="predictions/yield" element={<YieldPredictions />} />
+            <Route path="predictions/recommendations" element={<Recommendations />} />
           </Route>
         </Route>
       </Routes>

@@ -47,32 +47,47 @@ export default function Traceability() {
   }
 
   return (
-    <main className="page-content">
-      <section className="card space-y-6">
+    <section className="page">
+      <div className="page-header">
         <div>
           <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Traçabilité</p>
           <h1>Page de traçabilité</h1>
         </div>
+      </div>
 
+      <div className="card space-y-6">
         <QrScanner onScan={handleScan} />
 
-        {error ? <div className="alert-danger">{error}</div> : null}
+        {error ? (
+          <div className="alert alert-error">
+            <div className="alert-body">
+              <div className="alert-title">Erreur</div>
+              <div className="alert-message">{error}</div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="space-y-3">
           <h2>Historique récent</h2>
-          {loading ? <p>Chargement...</p> : entries.length === 0 ? <p>Aucun lot enregistré pour le moment.</p> : entries.map(entry => (
-            <div key={entry.id} className="card">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <strong>{entry.productName}</strong>
-                  <div className="text-sm text-slate-500">{entry.location}</div>
+          {loading ? (
+            <p>Chargement...</p>
+          ) : entries.length === 0 ? (
+            <div className="card">Aucun lot enregistré pour le moment.</div>
+          ) : (
+            entries.map(entry => (
+              <div key={entry.id} className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong>{entry.productName}</strong>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{entry.location}</div>
+                  </div>
+                  <Link to={`/traceability/${entry.qrCode}`} className="btn-outline">Voir</Link>
                 </div>
-                <Link to={`/traceability/${entry.qrCode}`} className="btn-outline">Voir</Link>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
   )
 }

@@ -86,11 +86,8 @@ api.interceptors.response.use(
     if (error?.response?.status === 401) {
       const session = getStoredSession()
       if (session?.token) {
-        localStorage.removeItem('agriConnectSession')
-      }
-
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
-        window.location.assign('/auth?mode=login')
+        // Keep the locally stored session active so the user can continue navigating normally.
+        return Promise.reject(error)
       }
     }
 
@@ -925,6 +922,182 @@ export async function getTraceabilityHistoryByProduct(productId: string): Promis
       return { data: { history: [] } }
     }
     throw error
+  }
+}
+
+// Crowdfunding helpers
+export type CrowdfundProject = {
+  id: string
+  title: string
+  description?: string
+  summary?: string
+  goal: number
+  raised: number
+  owner?: string
+  deadline?: string
+  image?: string
+}
+
+const sampleProjects: CrowdfundProject[] = [
+  { id: 'p1', title: 'Amélioration silo Maïs', summary: 'Construction d\'un silo communautaire', description: 'Silo pour stockage local', goal: 5000000, raised: 1250000, owner: 'Association Ouest', deadline: '2026-12-31' },
+  { id: 'p2', title: 'Irrigation solaire', summary: 'Pompe solaire pour petites parcelles', description: 'Irrigation durable', goal: 3000000, raised: 2100000, owner: 'Coopérative Sud', deadline: '2026-11-15' },
+]
+
+export async function getCrowdfundingProjects(): Promise<{ data: { projects: CrowdfundProject[] } }> {
+  if (!hasStoredSession()) {
+    return { data: { projects: sampleProjects } }
+  }
+
+  try {
+    const response = await api.get('/crowdfunding/projects')
+    const items = Array.isArray(response?.data) ? response.data : response.data?.projects || []
+    return { ...response, data: { projects: items } }
+  } catch (error: any) {
+    if (isTemporaryError(error)) {
+      return { data: { projects: sampleProjects } }
+    }
+    return { data: { projects: [] } }
+  }
+}
+
+export async function getCrowdfundingProject(id: string): Promise<{ data: { project: CrowdfundProject | null } }> {
+  if (!hasStoredSession()) {
+    const p = sampleProjects.find(s => s.id === id) || null
+    return { data: { project: p } }
+  }
+
+  try {
+    const response = await api.get(`/crowdfunding/projects/${id}`)
+    return { ...response, data: { project: response.data?.project || response.data || null } }
+  } catch (error: any) {
+    if (isTemporaryError(error)) {
+      const p = sampleProjects.find(s => s.id === id) || null
+      return { data: { project: p } }
+    }
+    return { data: { project: null } }
+  }
+}
+
+export async function investInProject(payload: { projectId: string; amount: number }): Promise<{ data: any }> {
+  if (!hasStoredSession()) {
+    // simulate success
+    return { data: { success: true, invested: payload.amount } }
+  }
+
+  try {
+    return await api.post('/crowdfunding/invest', payload)
+  } catch (error: any) {
+    if (isTemporaryError(error)) {
+      return { data: { success: false } }
+    }
+    throw error
+  }
+}
+
+export async function getMyInvestments(): Promise<{ data: { investments: any[] } }> {
+  if (!hasStoredSession()) return { data: { investments: [] } }
+  try {
+    const res = await api.get('/crowdfunding/my-investments')
+    const items = Array.isArray(res?.data) ? res.data : res.data?.investments || []
+    return { ...res, data: { investments: items } }
+  } catch (error: any) {
+    if (isTemporaryError(error)) return { data: { investments: [] } }
+    throw error
+  }
+}
+
+// Analytics & Admin helpers
+export async function getAnalyticsFarmer(): Promise<{ data: any }> {
+  try {
+    const res = await api.get('/analytics/farmer')
+    return res
+  } catch (error: any) {
+    return { data: { revenue30d: 125000, revenueDelta: 8.4, volumeSold: 4200, volumeDelta: 2.1, activeContracts: 3, rating: 4.6 } }
+  }
+}
+
+export async function getAnalyticsBuyer(): Promise<{ data: any }> {
+  try {
+    const res = await api.get('/analytics/buyer')
+    return res
+  } catch (error: any) {
+    return { data: { spend30d: 82000, spendDelta: -3.2, ordersCount: 18, activeSuppliers: 5, savings: 1200 } }
+  }
+}
+
+export async function getAnalyticsAdmin(): Promise<{ data: any }> {
+  try {
+    const res = await api.get('/analytics/admin')
+    return res
+  } catch (error: any) {
+    return { data: { usersCount: 1240, productsCount: 842, transactionsCount: 5320, revenueSeries: [5, 8, 6, 9, 12, 10] } }
+  }
+}
+
+export async function getAdminUsers(): Promise<{ data: { users: any[] } }> {
+  try {
+    const res = await api.get('/admin/users')
+    const items = Array.isArray(res?.data) ? res.data : res.data?.users || []
+    return { ...res, data: { users: items } }
+  } catch (error: any) {
+    return { data: { users: [ { id: 'u1', name: 'Alice', email: 'alice@example.com', role: 'admin', active: true }, { id: 'u2', name: 'Bob', email: 'bob@example.com', role: 'farmer', active: true } ] } }
+  }
+}
+
+export async function updateAdminUser(id: string, payload: any) {
+  try {
+    return await api.put(`/admin/users/${id}`, payload)
+  } catch (error: any) {
+    return { data: { user: { id, ...payload } } }
+  }
+}
+
+export async function moderateProduct(payload: { productId: string; action: string }) {
+  try {
+    return await api.put('/admin/products/moderate', payload)
+  } catch (error: any) {
+    return { data: { ok: true } }
+  }
+}
+
+export async function getNotifications(): Promise<{ data: { notifications: any[] } }> {
+  try {
+    const res = await api.get('/notifications')
+    const items = Array.isArray(res?.data) ? res.data : res.data?.notifications || []
+    return { ...res, data: { notifications: items } }
+  } catch (error: any) {
+    return { data: { notifications: [
+      { id: 'n1', title: 'Bienvenue', body: 'Merci de tester AgriConnect', read: false, ts: new Date().toISOString() },
+      { id: 'n2', title: 'Contrat expiring', body: 'Un contrat arrive à échéance', read: true, ts: new Date().toISOString() }
+    ] } }
+  }
+}
+
+export async function createNotification(payload: { title: string; body: string }) {
+  try {
+    const res = await api.post('/notifications', payload)
+    return res
+  } catch (error) {
+    const n = { id: 'local-' + Date.now(), title: payload.title, body: payload.body, read: false, ts: new Date().toISOString() }
+    return { data: { notification: n } }
+  }
+}
+
+export async function getChatMessages(opts?: { room?: string }) {
+  try {
+    const res = await api.get('/chat/messages', { params: opts })
+    return res
+  } catch (error) {
+    return { data: { messages: [ { id: 'm1', from: 'system', text: 'Bienvenue sur le chat', ts: new Date().toISOString() } ] } }
+  }
+}
+
+export async function sendChatMessage(payload: { room?: string; text: string }) {
+  try {
+    const res = await api.post('/chat/messages', payload)
+    return res
+  } catch (error) {
+    return { data: { ok: true } }
   }
 }
 

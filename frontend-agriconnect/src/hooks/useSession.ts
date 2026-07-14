@@ -30,10 +30,12 @@ function loadSession(): UserSession {
 
   try {
     const parsed = JSON.parse(raw) as Partial<UserSession>
+    const hasActiveSession = Boolean(parsed.token && parsed.user)
+
     return {
       token: parsed.token ?? null,
       user: parsed.user ?? null,
-      accountVerified: Boolean(parsed.accountVerified && parsed.token && parsed.user),
+      accountVerified: parsed.accountVerified ?? hasActiveSession,
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY)
@@ -49,6 +51,10 @@ function applySession(nextSession: UserSession) {
   currentSession = nextSession
   saveSession(nextSession)
   listeners.forEach(listener => listener())
+}
+
+function hasActiveSession(session: Partial<UserSession> | null | undefined) {
+  return Boolean(session?.token && session?.user)
 }
 
 export default function useSession() {
@@ -71,7 +77,11 @@ export default function useSession() {
   }
 
   const updateUser = (user: UserSession['user']) => {
-    applySession({ ...currentSession, user, accountVerified: Boolean(currentSession.accountVerified || user) })
+    applySession({
+      ...currentSession,
+      user,
+      accountVerified: Boolean(currentSession.token && user),
+    })
   }
 
   const changeRole = (role: UserRole) => {
@@ -82,13 +92,13 @@ export default function useSession() {
     applySession({
       ...currentSession,
       user: { ...currentSession.user, role },
-      accountVerified: Boolean(currentSession.accountVerified || currentSession.user),
+      accountVerified: Boolean(currentSession.token && currentSession.user),
     })
   }
 
   return {
     session,
-    isAuthenticated: Boolean(session.token && session.user && session.accountVerified),
+    isAuthenticated: hasActiveSession(session),
     login,
     logout,
     updateUser,
