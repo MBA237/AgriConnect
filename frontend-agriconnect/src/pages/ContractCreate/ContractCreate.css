@@ -1,0 +1,79 @@
+.contract-create-page > .card {
+	max-width: 860px;
+	margin: 24px auto;
+}
+
+.contract-create-page form {
+	display: flex;
+	flex-direction: column;
+}
+
+.contract-create-page form .input-group {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+
+.contract-create-page form label {
+	color: var(--text-primary);
+	font-size: 13px;
+	font-weight: 800;
+}
+
+.contract-create-page form input,
+.contract-create-page form select {
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-sm);
+	background: var(--bg-input);
+	color: var(--text-primary);
+	padding: 11px 12px;
+}
+
+.contract-create-page form input:focus,
+.contract-create-page form select:focus {
+	outline: none;
+	border-color: var(--primary-light);
+	box-shadow: 0 0 0 3px rgba(76, 122, 79, 0.14);
+}
+
+.contract-create-page form input[type='checkbox'] {
+	width: 17px;
+	height: 17px;
+	accent-color: var(--primary);
+}
+
+.contract-create-page form > .btn-primary {
+	align-self: flex-start;
+	min-width: 170px;
+}
+
+.contract-create-page .input-group input[list] {
+	min-width: 0;
+}
+
+.contract-cover-field {
+	padding: 16px;
+	border: 1px dashed var(--border-light);
+	border-radius: var(--radius-sm);
+	background: var(--bg-input);
+}
+
+.contract-cover-field input[type='file'] {
+	padding: 8px;
+	background: transparent;
+}
+
+.contract-cover-preview {
+	display: block;
+	width: min(100%, 520px);
+	aspect-ratio: 16 / 8;
+	margin-top: 12px;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	border: 1px solid var(--border-light);
+}
+
+.contract-create-page .alert {
+	width: 100%;
+	box-sizing: border-box;
+}

@@ -1,48 +1,57 @@
-import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
 import ToastProvider from './components/ToastProvider'
-import Home from './pages/Home'
-import Onboarding from './pages/Onboarding'
-import Profile from './pages/Profile'
-import RoleSelection from './pages/RoleSelection'
-import Auth from './pages/Auth'
-import ProductCatalog from './pages/ProductCatalog'
-import ProductDetail from './pages/ProductDetail'
-import CreateOffer from './pages/CreateOffer'
-import MarketDynamic from './pages/MarketDynamic'
-import Cart from './pages/Cart'
-import Checkout from './pages/Checkout'
-import PricePredictions from './pages/PricePredictions'
-import YieldPredictions from './pages/YieldPredictions'
-import Recommendations from './pages/Recommendations'
-import MyOrders from './pages/MyOrders'
-import OrderDetail from './pages/OrderDetail'
-import OrderTracking from './pages/OrderTracking'
-import OrderHistory from './pages/OrderHistory'
-import Contracts from './pages/Contracts'
-import ContractCreate from './pages/ContractCreate'
-import ContractDetail from './pages/ContractDetail'
-import Traceability from './pages/Traceability'
-import TraceabilityDetail from './pages/TraceabilityDetail'
+import Home from './pages/Home/index'
+import Onboarding from './pages/Onboarding/index'
+import Profile from './pages/Profile/index'
+import RoleSelection from './pages/RoleSelection/index'
+import Auth from './pages/Auth/index'
+import ProductCatalog from './pages/ProductCatalog/index'
+import ProductDetail from './pages/ProductDetail/index'
+import CreateOffer from './pages/CreateOffer/index'
+import MarketDynamic from './pages/MarketDynamic/index'
+import Cart from './pages/Cart/index'
+import Checkout from './pages/Checkout/index'
+import PricePredictions from './pages/PricePredictions/index'
+import YieldPredictions from './pages/YieldPredictions/index'
+import Recommendations from './pages/Recommendations/index'
+import MyOrders from './pages/MyOrders/index'
+import OrderDetail from './pages/OrderDetail/index'
+import OrderTracking from './pages/OrderTracking/index'
+import OrderHistory from './pages/OrderHistory/index'
+import Contracts from './pages/Contracts/index'
+import ContractCreate from './pages/ContractCreate/index'
+import ContractDetail from './pages/ContractDetail/index'
+import Traceability from './pages/Traceability/index'
+import TraceabilityDetail from './pages/TraceabilityDetail/index'
 import ProtectedRoute from './components/ProtectedRoute'
-import Crowdfunding from './pages/Crowdfunding'
-import ProjectDetail from './pages/ProjectDetail'
-import Notifications from './pages/Notifications'
+import Crowdfunding from './pages/Crowdfunding/index'
+import ProjectDetail from './pages/ProjectDetail/index'
+import Notifications from './pages/Notifications/index'
 import Chat from './components/Chat'
-import DashboardFarmer from './pages/DashboardFarmer'
-import DashboardBuyer from './pages/DashboardBuyer'
-import AdminPanel from './pages/AdminPanel'
-import Predictions from './pages/Predictions'
+import DashboardFarmer from './pages/DashboardFarmer/index'
+import DashboardBuyer from './pages/DashboardBuyer/index'
+import AdminPanel from './pages/AdminPanel/index'
+import Predictions from './pages/Predictions/index'
 
 export default function App() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const showModalBackground = location.pathname === '/auth' || location.pathname === '/role-selection'
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [location.pathname, location.search])
+
   return (
     <ToastProvider>
+      {showModalBackground ? <Onboarding /> : null}
       <Routes>
         <Route index element={<Onboarding />} />
         <Route path="onboarding" element={<Onboarding />} />
-        <Route path="role-selection" element={<RoleSelection />} />
-        <Route path="auth" element={<Auth />} />
+        <Route path="role-selection" element={<RoleSelection modal={showModalBackground} onClose={() => navigate('/onboarding')} />} />
+        <Route path="auth" element={<Auth modal={showModalBackground} onClose={() => navigate('/onboarding')} />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="home" element={<Home />} />

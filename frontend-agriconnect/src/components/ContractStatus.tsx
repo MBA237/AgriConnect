@@ -1,4 +1,5 @@
 import React from 'react'
+import './ContractStatus.css'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',

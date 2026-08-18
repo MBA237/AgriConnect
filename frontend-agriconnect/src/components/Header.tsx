@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import useSession from '../hooks/useSession'
+import './Header.css'
 
 const quickLinks = [
   { to: '/home', label: 'Accueil' },
@@ -139,7 +140,7 @@ export default function Header() {
         </button>
 
         <div className="user-badge" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-          <div className="avatar" id="headerAvatar"><img src={session.user?.email ? `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.name)}&background=ffffff&color=2F5233` : '/favicon.svg'} alt="Avatar" /></div>
+          <div className="avatar" id="headerAvatar"><img src={session.user?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name ?? 'Utilisateur')}&background=ffffff&color=2F5233`} alt="Photo de profil" /></div>
           <div className="user-info">
             <span className="name" id="headerName">{session.user?.name ?? 'Vous'}</span>
             <span className="role" id="headerRole">{session.user?.role ?? ''}</span>

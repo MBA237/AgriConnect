@@ -1,0 +1,83 @@
+.offer-form {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: 100%;
+	max-width: 920px;
+	margin: 0 auto;
+}
+
+.offer-page { width: 100%; max-width: 1120px; margin: 0 auto; box-sizing: border-box; }
+.offer-form-card { width: 100%; box-sizing: border-box; margin-top: 16px; padding: clamp(18px, 4vw, 34px); }
+.offer-form-alert { max-width: 100%; }
+.offer-loading { display: flex; min-height: 240px; align-items: center; justify-content: center; gap: 10px; color: var(--text-secondary); font-weight: 700; }
+
+.offer-form .grid-2 {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+.offer-form .input-group {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+
+.offer-form label {
+	color: var(--text-primary);
+	font-size: 13px;
+	font-weight: 800;
+}
+
+.offer-form input,
+.offer-form select,
+.offer-form textarea {
+	width: 100%;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-sm);
+	background: var(--bg-input);
+	color: var(--text-primary);
+	padding: 11px 12px;
+	box-sizing: border-box;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.offer-form input:focus,
+.offer-form select:focus,
+.offer-form textarea:focus {
+	outline: none;
+	border-color: var(--primary-light);
+	box-shadow: 0 0 0 3px rgba(76, 122, 79, 0.14);
+}
+
+.offer-form input.error,
+.offer-form textarea.error {
+	border-color: var(--danger);
+	box-shadow: 0 0 0 3px rgba(163, 59, 43, 0.1);
+}
+
+.offer-form textarea { resize: vertical; min-height: 112px; }
+
+.offer-form input[readonly] {
+	cursor: not-allowed;
+	background: var(--bg-card);
+	color: var(--text-secondary);
+	font-weight: 700;
+}
+
+.field-help { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.field-error { color: var(--danger); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+.offer-form-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
+.offer-form-actions button { min-height: 46px; }
+.offer-submit { gap: 9px; min-width: 190px; }
+.offer-cancel { min-width: 110px; }
+.spinner { display: inline-block; width: 16px; height: 16px; flex: 0 0 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: offer-spin 0.7s linear infinite; }
+.spinner-light { color: #fff; }
+@keyframes offer-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 680px) {
+	.offer-form .grid-2 { grid-template-columns: 1fr; gap: 20px; }
+	.offer-form-actions { flex-direction: column; }
+	.offer-form-actions button { width: 100%; }
+}

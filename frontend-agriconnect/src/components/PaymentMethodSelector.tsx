@@ -1,4 +1,5 @@
 import React from 'react'
+import './PaymentMethodSelector.css'
 
 export type PaymentMethod = 'mtn_momo' | 'mobile_money' | 'card' | 'orange_money'
 

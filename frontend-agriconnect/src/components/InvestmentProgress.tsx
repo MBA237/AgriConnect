@@ -1,4 +1,5 @@
 import React from 'react'
+import './InvestmentProgress.css'
 
 export default function InvestmentProgress({ raised, goal }: { raised: number; goal: number }) {
   const pct = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0

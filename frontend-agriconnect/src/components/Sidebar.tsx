@@ -1,4 +1,5 @@
 import React from 'react'
+import './Sidebar.css'
 import { NavLink } from 'react-router-dom'
 
 const links = [
@@ -6,7 +7,11 @@ const links = [
   { label: 'Catalogue', to: '/catalog', description: 'Explorer les produits' },
   { label: 'Panier', to: '/cart', description: 'Voir votre panier' },
   { label: 'Marché Dynamique', to: '/market', description: 'Voir les prix en direct' },
+  { label: 'Contrats', to: '/contracts', description: 'Gérer les contrats garantis' },
+  { label: 'Traçabilité', to: '/traceability', description: 'Suivre les lots via QR code' },
   { label: 'Financement', to: '/crowdfunding', description: 'Soutenir des projets agricoles' },
+  { label: 'Notifications', to: '/notifications', description: 'Consulter les alertes' },
+  { label: 'Chat', to: '/chat', description: 'Messagerie et assistance' },
   { label: 'Prédictions', to: '/predictions', description: 'Consulter les prévisions IA' },
   { label: 'Mes commandes', to: '/orders/my', description: 'Suivre vos commandes' },
   { label: 'Profil', to: '/profile', description: 'Gérer votre compte' },

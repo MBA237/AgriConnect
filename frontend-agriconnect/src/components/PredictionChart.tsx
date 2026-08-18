@@ -1,4 +1,5 @@
 import React from 'react'
+import './PredictionChart.css'
 
 type Point = { x: string; y: number }
 

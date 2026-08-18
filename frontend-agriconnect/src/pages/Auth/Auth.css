@@ -1,0 +1,459 @@
+﻿.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  background: radial-gradient(circle at top left, rgba(47, 82, 51, 0.1), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(181, 101, 29, 0.1), transparent 22%),
+    var(--bg-body);
+}
+
+.auth-card {
+  width: min(820px, 100%);
+  padding: 36px;
+  border-radius: 32px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+}
+
+.auth-card .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.auth-card h1 {
+  font-size: clamp(2rem, 2.4vw, 2.4rem);
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+}
+
+.auth-card p.text-slate-600 {
+  max-width: 720px;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.auth-card .input-group {
+  margin-bottom: 18px;
+}
+
+/* Phone input layout: country select + local number */
+.phone-input .phone-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.phone-input .country-select {
+  min-width: 140px;
+  max-width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255,255,255,0.96);
+}
+
+.phone-input input[type="tel"] {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.phone-input .selected-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin: 0 6px;
+}
+
+@media (max-width: 480px) {
+  .phone-input .selected-flag {
+    font-size: 18px;
+    margin: 0 4px;
+  }
+}
+
+.auth-card .alert {
+  margin: 18px 0;
+}
+
+/* Prevent input/label overflow on small screens */
+.auth-card .input-group {
+  min-width: 0;
+}
+
+.auth-card .input-group label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-card input,
+.auth-card select,
+.auth-card textarea {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.auth-card .input-group label {
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+  font-weight: 600;
+}
+
+.auth-card input,
+.auth-card select,
+.auth-card textarea {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text-primary);
+  box-shadow: inset 0 10px 24px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.auth-card input:focus,
+.auth-card select:focus,
+.auth-card textarea:focus {
+  outline: none;
+  border-color: rgba(47, 82, 51, 0.35);
+  box-shadow: 0 0 0 4px rgba(47, 82, 51, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.auth-card .btn-primary {
+  padding: 16px 28px;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #345434 0%, #4f7d5b 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(47, 82, 51, 0.16);
+}
+
+.auth-card .btn-outline {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary);
+  border: 1px solid rgba(47, 82, 51, 0.16);
+  border-radius: 14px;
+}
+
+.auth-card .btn-outline:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(47, 82, 51, 0.3);
+}
+
+.auth-card .text-slate-600 {
+  margin: 0;
+}
+
+.auth-hero {
+  width: 100%;
+  max-height: 240px;
+  border-radius: 12px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0 0 14px 0;
+  box-shadow: 0 14px 40px rgba(15, 35, 18, 0.12);
+}
+
+.auth-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.auth-choice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(47, 82, 51, 0.16);
+  background: #f8fafc;
+  color: var(--text-primary);
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.auth-choice-card:hover,
+.auth-choice-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(47, 82, 51, 0.28);
+  box-shadow: 0 20px 50px rgba(47, 82, 51, 0.08);
+  background: #ffffff;
+}
+
+.auth-choice-card .choice-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.auth-choice-card h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.2;
+}
+
+.auth-choice-card p {
+  margin: 16px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.auth-choice-card .choice-action {
+  margin-top: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.auth-form-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.08);
+}
+
+.method-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* center form action buttons */
+.auth-form-card .btn-primary,
+.auth-form-card .btn-outline {
+  display: block;
+  margin: 0 auto;
+  max-width: 360px;
+}
+
+/* layout for the two main form buttons */
+.auth-form-card .form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.auth-form-card .form-actions .btn-primary,
+.auth-form-card .form-actions .btn-outline {
+  display: inline-block;
+  width: 100%;
+  max-width: 420px;
+}
+
+@media (min-width: 640px) {
+  .auth-form-card .form-actions .btn-primary,
+  .auth-form-card .form-actions .btn-outline {
+    width: calc(50% - 6px);
+    max-width: none;
+  }
+}
+
+/* center header inside modal */
+.auth-modal .page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.btn-tab {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  padding: 14px 18px;
+  background: rgba(249, 250, 251, 0.92);
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-tab.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.btn-tab:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+@media (max-width: 720px) {
+  .auth-hero {
+    max-height: 160px;
+    border-radius: 10px;
+  }
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2200;
+  padding: 24px;
+}
+
+.auth-modal {
+  width: min(1040px, 100%);
+  max-width: 1080px;
+  max-height: calc(100vh - 48px);
+  overflow: hidden; /* container hides native scrollbars */
+  display: grid;
+  place-items: center;
+  padding: 10px;
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  padding: 34px;
+  border-radius: 32px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 32px 88px rgba(15, 23, 42, 0.16);
+  overflow: visible; /* allow controls like close button to be visible */
+}
+
+/* make inner card content scrollable while hiding scrollbar */
+.auth-modal .auth-card.modal-card,
+.auth-modal .modal-card > .card,
+.auth-modal .modal-card > .auth-form-card {
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.auth-modal .auth-card.modal-card::-webkit-scrollbar,
+.auth-modal .modal-card > .card::-webkit-scrollbar,
+.auth-modal .modal-card > .auth-form-card::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* prevent long headings from overflowing */
+.modal-card .page-header h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* clamp description text to avoid overflow */
+.auth-card p.text-slate-600,
+.auth-choice-card p,
+.auth-form-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* make choice cards more compact on small screens */
+@media (max-width: 720px) {
+  .auth-choice-card {
+    min-height: 160px;
+    padding: 18px;
+  }
+}
+
+.modal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+}
+
+.auth-card.modal-card {
+  max-width: 820px;
+}
+
+.modal-card .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.modal-card .page-header h1 {
+  font-size: clamp(1.6rem, 2.2vw, 2.4rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.modal-card .page-header .badge {
+  background: rgba(47, 82, 51, 0.14);
+  color: #2f5233;
+}
+
+.modal-close-button {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 9999;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); /* red */
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.18);
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.modal-close-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(0.95);
+}
+
+.modal-close-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+@media (max-width: 420px) {
+  .modal-close-button {
+    left: 10px;
+    top: 10px;
+    padding: 8px 10px;
+  }
+}

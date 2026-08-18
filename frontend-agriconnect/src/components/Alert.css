@@ -1,0 +1,8 @@
+/* Styles specific to Alert component */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert .alert-title { font-weight: 700 }

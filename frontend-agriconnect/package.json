@@ -11,8 +11,11 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.0",
+    "@types/qrcode": "^1.5.6",
     "axios": "^1.18.1",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
+    "react-country-flag": "^3.1.0",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1"
   },

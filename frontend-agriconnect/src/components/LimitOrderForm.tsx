@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { createLimitOrder } from '../services/api'
 import { useToasts } from './ToastProvider'
+import './LimitOrderForm.css'
 
 type LimitOrderFormProps = {
   productId: string

@@ -1,0 +1,5 @@
+/* ContractStatus styles */
+.contract-status { padding: 6px 10px; border-radius: 6px; display: inline-block }
+.contract-status.pending { background: #fff9e6 }
+
+:root[data-theme='dark'] .contract-status.pending { background: #4a3a1c; color: #f7d98c; }

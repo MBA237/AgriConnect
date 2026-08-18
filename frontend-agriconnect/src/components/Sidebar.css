@@ -1,0 +1,30 @@
+.sidebar { width:260px; padding:12px }
+
+/* Sidebar rules moved from index.css */
+.sidebar {
+	width: 240px;
+	flex-shrink: 0;
+	background: var(--bg-sidebar);
+	border-right: 1px solid var(--border-light);
+	padding: 20px;
+	border-radius: 24px;
+	backdrop-filter: blur(20px);
+	position: relative;
+	top: auto;
+	align-self: start;
+	max-height: none;
+	overflow: auto;
+}
+
+.sidebar::-webkit-scrollbar { width: 8px }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(47,82,51,0.18); border-radius: 999px }
+
+.nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.8px; margin-bottom: 16px }
+
+.sidebar .nav-item { display:block; width:100%; padding:14px 16px; margin-bottom:10px; border-radius:16px; color:var(--text-secondary); background:transparent; transition:var(--transition); text-align:left }
+.sidebar .nav-item:hover { background: rgba(47,82,51,0.06); color: var(--primary) }
+.sidebar .nav-item.active { background: rgba(47,82,51,0.10); color: var(--primary); border: 1px solid rgba(47,82,51,0.08) }
+
+.sidebar-link-title { display:block; font-weight:700; font-size:14px }
+.sidebar-link-desc { display:block; font-size:12px; color:var(--text-muted); margin-top:4px }
+.sidebar .nav-item.active .sidebar-link-desc { color: var(--primary-light) }

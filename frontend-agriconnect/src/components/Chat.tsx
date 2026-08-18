@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
+import './Chat.css'
 import { getChatMessages, sendChatMessage } from '../services/api'
 
 export default function Chat({ room = 'global' }: { room?: string }) {
   const [messages, setMessages] = useState<Array<{ id: string; from: string; text: string; ts?: string }>>([])
   const [text, setText] = useState('')
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed'>('connecting')
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'disabled'>('disabled')
   const wsRef = useRef<WebSocket | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -20,7 +21,12 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     }
     loadHistory()
 
-    const wsUrl = import.meta.env.VITE_CHAT_WS_URL ?? 'ws://localhost/chat/messages'
+    const wsUrl = import.meta.env.VITE_CHAT_WS_URL?.trim()
+    if (!wsUrl) {
+      setWsStatus('disabled')
+      return () => { mounted = false }
+    }
+
     try {
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -60,7 +66,7 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', height: 360 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <strong>Chat</strong>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{wsStatus === 'connected' ? 'En direct' : wsStatus === 'connecting' ? 'Connexion...' : 'Déconnecté'}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{wsStatus === 'connected' ? 'En direct' : wsStatus === 'connecting' ? 'Connexion...' : wsStatus === 'disabled' ? 'Via API' : 'Déconnecté'}</span>
       </div>
       <div ref={containerRef} style={{ overflowY: 'auto', marginTop: 8, flex: 1 }}>
         {messages.map(m => (

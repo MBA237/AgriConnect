@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useState } from 'react'
 import Alert, { AlertType } from './Alert'
+import './ToastProvider.css'
 
 type Toast = { id: string; type: AlertType; title?: string; message: React.ReactNode; timeout?: number }
 

@@ -1,0 +1,59 @@
+/* Header styles */
+.site-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px }
+.brand-group .logo { font-weight:800 }
+
+/* Extended header rules moved from index.css */
+.site-header {
+	background: var(--bg-header);
+	padding: 18px 24px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	position: sticky;
+	top: 0;
+	z-index: 1200;
+	box-shadow: 0 12px 36px rgba(15, 28, 16, 0.22);
+	border-bottom: 1px solid rgba(211, 138, 63, 0.25);
+	backdrop-filter: blur(14px);
+}
+
+.brand-group { display:flex; align-items:center; gap:16px; flex-wrap:wrap }
+
+.brand-group, .header-actions { min-width: 0; }
+
+.logo { display:inline-flex; align-items:center; gap:12px; font-family:var(--font-display); font-weight:700; font-size:22px; color:white }
+
+.header-nav { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+
+.header-nav-link { white-space: nowrap; }
+
+.header-nav-link { display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:999px; color: rgba(255,255,255,0.9); font-size:13px; font-weight:700 }
+
+.header-nav-link:hover, .header-nav-link.active { background: rgba(255,255,255,0.16); color:white }
+
+.leaf-mark { width:36px; height:36px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(135deg, #B5651D, #D38A3F); color:#1E3722 }
+
+.theme-selector { display:inline-flex; gap:6px; align-items:center; padding:4px; background: rgba(255,255,255,0.04); border-radius:999px; border:1px solid rgba(255,255,255,0.04) }
+.theme-selector button { background:transparent; border:none; color: rgba(255,255,255,0.9); padding:6px 8px; display:inline-flex; gap:8px; align-items:center; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer }
+.theme-selector button:hover { background: rgba(255,255,255,0.08) }
+.theme-selector button.active { background: white; color: var(--primary-dark) }
+
+:root[data-theme='dark'] .theme-selector button.active { background: #e7f0e8; color: #17301d; }
+
+.notif-btn { position: relative; background: transparent; border: none; color: white; padding: 8px 10px; border-radius: 10px; cursor: pointer }
+.notif-btn .badge { position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; padding:4px 7px; border-radius:999px; font-size:11px; font-weight:800 }
+
+.user-badge { display:inline-flex; align-items:center; gap:10px; padding:6px 10px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.04) }
+.user-badge .avatar { width:44px; height:44px; border-radius:999px; overflow:hidden; border:2px solid rgba(255,255,255,0.06) }
+
+.nav-item { display:inline-flex; align-items:center; justify-content:center; padding:10px 18px; border-radius:999px; background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.18); color:white; font-size:13px; font-weight:700 }
+.nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.22) }
+
+.header-actions { display:flex; flex-wrap:wrap; gap:10px }
+
+@media (max-width: 860px) {
+	.site-header { flex-direction: column; align-items: stretch; padding: 16px 18px }
+	.brand-group, .header-actions { justify-content: space-between }
+	.header-nav { width: 100%; margin-top: 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px }
+}

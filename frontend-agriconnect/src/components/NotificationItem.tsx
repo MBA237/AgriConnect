@@ -1,4 +1,5 @@
 import React from 'react'
+import './NotificationItem.css'
 
 export type Notification = {
   id: string

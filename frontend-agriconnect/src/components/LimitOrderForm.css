@@ -1,0 +1,4 @@
+/* LimitOrderForm styles */
+.limit-order { display: flex; gap: 8px; }
+.limit-order-form .form-header p { overflow-wrap: anywhere; line-height: 1.45; }
+.limit-order-form .order-info, .limit-order-form .order-summary { overflow-wrap: anywhere; }

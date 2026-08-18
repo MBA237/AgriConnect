@@ -1,4 +1,5 @@
 import React from 'react'
+import './PredictionCard.css'
 
 type Props = {
   title: string

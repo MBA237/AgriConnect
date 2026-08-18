@@ -1,0 +1,4 @@
+.order-status { padding:6px 10px; border-radius:6px }
+.order-status.pending { background:#fff7ed }
+
+:root[data-theme='dark'] .order-status.pending { background: #4a321c; color: #f7d59d; }

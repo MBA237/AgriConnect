@@ -1,0 +1,32 @@
+.profile-photo-picker { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 8px; color: var(--primary); cursor: pointer; font-size: 12px; font-weight: 700; }
+.profile-photo-picker input { display: none; }
+.profile-photo-remove { margin-left: 6px; padding: 7px 10px; border: 0; background: transparent; color: var(--danger); cursor: pointer; font-size: 12px; }
+/* Profile-specific styles extracted from global CSS */
+.profil-avatar {
+	width: 120px;
+	height: 120px;
+	border-radius: 999px;
+	overflow: hidden;
+	margin: 0 auto;
+	border: 4px solid rgba(255, 255, 255, 0.9);
+	box-shadow: 0 8px 20px rgba(32, 39, 31, 0.12);
+	background: var(--bg-card);
+}
+.profil-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.profile-grid {
+	display: grid;
+	grid-template-columns: 1fr 2fr;
+	gap: 24px;
+}
+
+@media (max-width: 720px) {
+	.profile-grid {
+		grid-template-columns: 1fr;
+	}
+}

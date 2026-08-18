@@ -12,12 +12,26 @@ export interface UserSession {
         role: UserRole
         phone?: string
         gender?: string
+        profileImage?: string
       }
     | null
   accountVerified: boolean
 }
 
 const STORAGE_KEY = 'agriConnectSession'
+
+function normalizeRole(role: unknown): UserRole {
+  switch (role) {
+    case 'FARMER':
+    case 'agriculteur':
+      return 'agriculteur'
+    case 'BUYER_PRO':
+    case 'acheteur-pro':
+      return 'acheteur-pro'
+    default:
+      return 'acheteur-particulier'
+  }
+}
 
 let currentSession = loadSession()
 const listeners = new Set<() => void>()
@@ -34,7 +48,9 @@ function loadSession(): UserSession {
 
     return {
       token: parsed.token ?? null,
-      user: parsed.user ?? null,
+      user: parsed.user
+        ? { ...parsed.user, role: normalizeRole(parsed.user.role) }
+        : null,
       accountVerified: parsed.accountVerified ?? hasActiveSession,
     }
   } catch {
@@ -69,7 +85,11 @@ export default function useSession() {
   }, [])
 
   const login = (token: string, user: UserSession['user']) => {
-    applySession({ token, user, accountVerified: Boolean(token && user) })
+    applySession({
+      token,
+      user: user ? { ...user, role: normalizeRole(user.role) } : null,
+      accountVerified: Boolean(token && user),
+    })
   }
 
   const logout = () => {

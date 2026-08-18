@@ -1,0 +1,43 @@
+/* Cart and checkout related styles moved from index.css */
+.cart-layout, .checkout-layout { display: grid; grid-template-columns: 1.7fr 0.95fr; gap: 18px }
+
+.cart-items-card, .cart-summary-card, .checkout-cart-card, .checkout-payment-card {
+  padding: 24px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.92));
+  border: 1px solid rgba(47,82,51,0.08);
+}
+
+.cart-item, .checkout-item-row, .order-item-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 0; border-bottom:1px solid var(--border-light) }
+.cart-item:last-child, .checkout-item-row:last-child, .order-item-row:last-child { border-bottom: none }
+
+.cart-item img { width:100px; height:100px; object-fit:cover; border-radius:20px }
+.cart-item-details, .checkout-item-row > div { flex:1; min-width:0 }
+
+.cart-item-title { font-weight:800; font-size:15px; margin-bottom:6px }
+.cart-item-meta { font-size:13px; color:var(--text-muted); margin-bottom:12px }
+
+.cart-item-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+
+.cart-item-price, .checkout-item-row > div:last-child, .order-item-row > div:last-child { min-width:120px; text-align:right; font-weight:700; color:var(--text-primary) }
+
+.cart-page .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:24px }
+.cart-page .page-header .sub { margin-top:8px; color:var(--text-muted) }
+
+.cart-page .actions { display:flex; align-items:center; gap:10px }
+
+.cart-items-card .section-title, .cart-summary-card .section-title { margin-bottom:20px }
+
+.cart-summary-card { display:flex; flex-direction:column; gap:16px }
+.cart-summary-card button { margin-top:12px; width:100% }
+
+.summary-row { display:flex; justify-content:space-between; gap:12px; padding:14px 0; font-size:15px; color:var(--text-secondary) }
+.summary-row strong { color:var(--text-primary) }
+.cart-summary-card .summary-row:last-child { border-top:1px solid var(--border-light); padding-top:18px }
+
+@media (max-width: 940px) { .checkout-layout, .cart-layout { grid-template-columns: 1fr } }
+
+@media (max-width: 840px) {
+  .cart-page .page-header { flex-direction: column; align-items: stretch }
+  .cart-page .actions { justify-content: flex-start }
+}

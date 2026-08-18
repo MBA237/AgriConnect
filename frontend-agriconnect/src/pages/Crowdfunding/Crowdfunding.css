@@ -1,0 +1,10 @@
+.crowdfunding-form-card { margin: 16px 0; }
+.project-cover-preview { width: 100%; max-width: 420px; max-height: 220px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
+.crowdfunding-form { display: flex; flex-direction: column; gap: 16px; max-width: 900px; }
+.crowdfunding-form .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.crowdfunding-form .input-group { display: flex; flex-direction: column; gap: 7px; }
+.crowdfunding-form label { font-size: 13px; font-weight: 800; }
+.crowdfunding-form input, .crowdfunding-form textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-input); color: var(--text-primary); }
+.crowdfunding-form input:focus, .crowdfunding-form textarea:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(76, 122, 79, .14); }
+.crowdfunding-form textarea { resize: vertical; }
+@media (max-width: 680px) { .crowdfunding-form .grid-2 { grid-template-columns: 1fr; } }

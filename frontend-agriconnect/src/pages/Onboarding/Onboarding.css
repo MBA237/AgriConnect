@@ -1,0 +1,186 @@
+﻿.landing-page {
+  width: 100%;
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-hero {
+  width: 100%;
+  min-height: 100vh;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-hero .hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(30, 55, 34, 0.72), rgba(47, 82, 51, 0.18) 42%, rgba(255, 255, 255, 0.04));
+  pointer-events: none;
+  min-height: 100%;
+}
+
+.landing-copy {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 860px);
+  max-width: 860px;
+  margin: 0 auto;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
+  place-items: center;
+  gap: 1.25rem;
+  min-height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.landing-hero .eyebrow {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  text-align: left;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  letter-spacing: 0.12em;
+  color: #E0AC6C;
+  font-weight: 800;
+  z-index: 2;
+}
+
+.landing-logo {
+  width: clamp(160px, 22vw, 260px);
+  height: auto;
+  margin: 0;
+  animation: float-vertical 6s ease-in-out infinite;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.24));
+}
+
+.landing-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 3.5vw, 3.4rem);
+  line-height: 1.05;
+  color: white;
+  margin: 0;
+  max-width: 720px;
+  text-align: center;
+}
+
+.landing-description {
+  margin: 0;
+  max-width: 720px;
+  font-size: clamp(2rem, 2.1vw, 2.16rem);
+  line-height: 1.75;
+  text-align: center;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.landing-copy .point {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  background: #18ff03;
+  margin: 10px;
+  margin-top: 0;
+  margin-bottom: 0;
+  
+  line-height: 1;
+  border-radius: 100%;
+}
+
+.landing-cta {
+  margin-top: 1.5rem;
+  min-width: 220px;
+  padding: 14px 30px;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 1200px) {
+  .landing-hero {
+    min-height: 560px;
+    height: 86vh;
+  }
+}
+
+@media (max-width: 860px) {
+  .landing-copy {
+    width: min(96vw, 740px);
+    padding: 24px 18px;
+    gap: 1rem;
+  }
+
+  .landing-logo {
+    width: clamp(140px, 30vw, 220px);
+  }
+
+  .landing-title {
+    font-size: clamp(2.1rem, 7vw, 2.8rem);
+  }
+
+  .landing-description {
+    font-size: 1rem;
+  }
+
+  .landing-hero .eyebrow {
+    top: 18px;
+    left: 18px;
+    padding: 8px 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .landing-copy {
+    width: min(100vw, 540px);
+    padding: 18px 14px;
+    gap: 0.9rem;
+  }
+
+  .landing-logo {
+    width: clamp(120px, 36vw, 200px);
+  }
+
+  .landing-title {
+    font-size: clamp(1.8rem, 9vw, 2.4rem);
+  }
+
+  .landing-hero .eyebrow {
+    top: 14px;
+    left: 14px;
+    padding: 8px 12px;
+    font-size: 1.2rem;
+  }
+
+  .landing-cta {
+    min-width: 200px;
+    padding: 12px 24px;
+  }
+}

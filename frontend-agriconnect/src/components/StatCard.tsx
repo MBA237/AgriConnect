@@ -1,4 +1,5 @@
 import React from 'react'
+import './StatCard.css'
 
 export default function StatCard({ title, value, delta, icon }: { title: string; value: string | number; delta?: number; icon?: React.ReactNode }) {
   return (

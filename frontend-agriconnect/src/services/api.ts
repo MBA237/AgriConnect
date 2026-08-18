@@ -1,4 +1,6 @@
 import axios from 'axios'
+import type { AuthMode } from './authFlow'
+import { buildAuthRequestPayload, buildAuthVerifyPayload } from './authRequest.js'
 
 export type Product = {
   id: string
@@ -17,6 +19,14 @@ export type Product = {
   images?: string[]
 }
 
+export type RegisteredSeller = {
+  id: string
+  fullName: string
+  email?: string
+}
+
+export type RegisteredUser = RegisteredSeller & { role: string }
+
 export type PriceData = {
   productId: string
   productTitle: string
@@ -28,12 +38,28 @@ export type PriceData = {
   unit: string
   timestamp: string
   trend: 'up' | 'down' | 'stable'
+  regions?: ZonePricePoint[]
+  aiInsight?: string
 }
 
 export type PriceHistoryData = {
   timestamp: string
   price: number
   volume: number
+}
+
+export type ZonePricePoint = {
+  zone: string
+  price: number
+  change: number
+  trend: 'up' | 'down' | 'stable'
+}
+
+export type PriceZoneSeries = {
+  productId: string
+  productTitle: string
+  category: string
+  zones: ZonePricePoint[]
 }
 
 export type LimitOrder = {
@@ -117,7 +143,7 @@ const profileCache = {
 
 let profileRequestPromise: Promise<{ data: any }> | null = null
 
-type MarketSource = 'api' | 'cache' | 'fallback'
+type MarketSource = 'external' | 'api' | 'cache' | 'database-fallback' | 'external-unavailable' | 'fallback'
 
 function buildMarketMeta(source: MarketSource, message?: string) {
   return {
@@ -178,6 +204,7 @@ function normalizeUser(user: any, fallbackEmail?: string) {
     role: mapRoleToFrontend(user?.role),
     phone: user?.phone || undefined,
     gender: user?.gender || undefined,
+    profileImage: user?.profileImage || undefined,
     ...(user || {}),
   }
 }
@@ -185,6 +212,11 @@ function normalizeUser(user: any, fallbackEmail?: string) {
 function normalizeProduct(product: any): Product {
   const price = Number(product?.price ?? product?.currentPrice ?? 0)
   const stock = Number(product?.stock ?? product?.quantity ?? 0)
+  const images = Array.isArray(product?.images)
+    ? product.images.filter((image: unknown): image is string => typeof image === 'string' && image.trim().length > 0)
+    : typeof product?.image === 'string' && product.image.trim().length > 0
+      ? [product.image]
+      : []
   return {
     id: product?.id || '',
     title: product?.title || product?.productTitle || '',
@@ -196,16 +228,29 @@ function normalizeProduct(product: any): Product {
     quality: product?.quality || '',
     deliveryTime: product?.deliveryTime || '',
     description: product?.description || '',
-    farmerName: product?.farmerName || product?.seller?.fullName || product?.seller?.email || '',
+    farmerName: product?.farmerName || product?.seller?.fullName || product?.seller?.email || 'Vendeur enregistré',
     ownerId: product?.ownerId || product?.sellerId || product?.seller?.id,
     publishedAt: product?.publishedAt || product?.createdAt,
-    images: product?.images || [],
+    images,
   }
 }
 
 function normalizePriceData(item: any): PriceData {
   const currentPrice = Number(item?.currentPrice ?? item?.price ?? 0)
   const previousPrice = Number(item?.previousPrice ?? item?.price ?? currentPrice)
+  const rawRegions = item?.regions ?? item?.zones ?? item?.regionalPrices ?? item?.regional_prices
+  const regions = Array.isArray(rawRegions)
+    ? rawRegions.map((region: any) => {
+        const regionPrice = Number(region.price ?? region.currentPrice ?? region.current_price)
+        const regionChange = Number(region.change ?? region.priceChangePercent ?? region.price_change_percent ?? 0)
+        return {
+          zone: String(region.zone ?? region.region ?? region.name ?? 'Zone inconnue'),
+          price: Number.isFinite(regionPrice) ? regionPrice : 0,
+          change: Number.isFinite(regionChange) ? regionChange : 0,
+          trend: regionChange > 0 ? 'up' : regionChange < 0 ? 'down' : 'stable',
+        } as ZonePricePoint
+      }).filter((region: ZonePricePoint) => region.price > 0)
+    : undefined
   return {
     productId: item?.productId || item?.id || '',
     productTitle: item?.productTitle || item?.title || '',
@@ -217,6 +262,8 @@ function normalizePriceData(item: any): PriceData {
     unit: item?.unit || 'kg',
     timestamp: item?.timestamp || item?.updatedAt || new Date().toISOString(),
     trend: item?.trend || 'stable',
+    regions,
+    aiInsight: item?.aiInsight || item?.ai_insight || item?.forecast?.summary,
   }
 }
 
@@ -224,6 +271,35 @@ function normalizeHistoryData(data: any) {
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.history)) return data.history
   return []
+}
+
+export function buildNationalZoneSeries(price: PriceData): PriceZoneSeries {
+  const zones = price.regions ?? []
+
+  return {
+    productId: price.productId,
+    productTitle: price.productTitle,
+    category: price.category,
+    zones,
+  }
+}
+
+export function getPriceForZone(price: PriceData, zone?: string): { price: number; change: number; trend: PriceData['trend']; hasRegionalData: boolean } {
+  if (!zone || zone === 'national') {
+    return { price: price.currentPrice, change: price.priceChangePercent, trend: price.trend, hasRegionalData: false }
+  }
+
+  const regionalPrice = price.regions?.find(region => region.zone === zone)
+  if (!regionalPrice) {
+    return { price: price.currentPrice, change: price.priceChangePercent, trend: price.trend, hasRegionalData: false }
+  }
+
+  return {
+    price: regionalPrice.price,
+    change: regionalPrice.change,
+    trend: regionalPrice.trend,
+    hasRegionalData: true,
+  }
 }
 
 function extractArrayData(data: any, key: string) {
@@ -240,16 +316,15 @@ export async function requestOtp(payload: {
   firstName?: string
   lastName?: string
   gender?: string
-  mode?: 'register' | 'login'
+  mode?: AuthMode
 }): Promise<{ data: any }> {
-  const contactEmail = payload.email || (payload.phone ? `${String(payload.phone).replace(/[^\d]/g, '')}@agriconnect.local` : '')
-  const backendPayload = {
-    ...payload,
-    email: contactEmail,
-    role: mapRoleToBackend(payload.role),
-    mode: payload.mode || 'register',
-    otp: undefined,
-  }
+  const backendPayload = buildAuthRequestPayload({
+    deliveryMethod: payload.deliveryMethod,
+    email: payload.email,
+    phone: payload.phone,
+    role: payload.role,
+    mode: payload.mode,
+  })
 
   try {
     return await api.post('/auth/request-otp', backendPayload)
@@ -267,39 +342,43 @@ export async function requestOtp(payload: {
   }
 }
 
-export async function verifyOtp(payload: { deliveryMethod: 'email' | 'phone'; email?: string; phone?: string; code: string; mode?: 'register' | 'login' }): Promise<{ data: any }> {
-  const contactEmail = payload.email || (payload.phone ? `${String(payload.phone).replace(/[^\d]/g, '')}@agriconnect.local` : '')
-  const backendPayload = {
-    email: contactEmail,
+export async function verifyOtp(payload: { deliveryMethod: 'email' | 'phone'; email?: string; phone?: string; code: string; mode?: AuthMode; role?: string; firstName?: string; lastName?: string; password?: string }): Promise<{ data: any }> {
+  const backendPayload = buildAuthVerifyPayload({
+    deliveryMethod: payload.deliveryMethod,
+    email: payload.email,
     phone: payload.phone,
-    otp: payload.code,
     code: payload.code,
-    mode: payload.mode || 'register',
-    role: 'BUYER_PARTICULIER',
-  }
+    mode: payload.mode,
+    role: payload.role,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    password: payload.password,
+  })
 
   try {
     const response = await api.post(payload.mode === 'login' ? '/auth/login' : '/auth/verify-otp', backendPayload)
-    const token = response?.data?.token || response?.data?.accessToken || response?.data?.access_token || null
+    const token = response?.data?.accessToken || response?.data?.token || response?.data?.access_token || null
+    const normalizedEmail = response?.data?.user?.email || payload.email || (payload.phone ? `${String(payload.phone).replace(/\D/g, '')}@agriconnect.local` : '')
     return {
       ...response,
       data: {
         ...response.data,
         token,
-        user: normalizeUser(response.data?.user, contactEmail),
+        user: normalizeUser(response.data?.user, normalizedEmail),
       },
     }
   } catch (error: any) {
     if (error?.response?.status === 500 || error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
+      const fallbackEmail = payload.email || (payload.phone ? `${String(payload.phone).replace(/\D/g, '')}@agriconnect.local` : 'user@agriconnect.local')
       return {
         data: {
-          token: 'local-token',
+          token: `session-${Date.now()}`,
           user: normalizeUser({
             id: 'local-user',
             fullName: payload.email || payload.phone || 'Utilisateur',
-            email: contactEmail || 'user@agriconnect.local',
-            role: 'BUYER_PARTICULIER',
-          }, contactEmail),
+            email: fallbackEmail,
+            role: mapRoleToBackend(payload.role || 'BUYER_PARTICULIER'),
+          }, fallbackEmail),
         },
       }
     }
@@ -370,6 +449,7 @@ export async function updateProfile(payload: any): Promise<{ data: any }> {
     email: payload.email,
     phone: payload.phone,
     gender: payload.gender,
+    profileImage: payload.profileImage ?? null,
   }
 
   try {
@@ -443,6 +523,28 @@ export async function getProduct(id: string): Promise<{ data: { product: Product
     data: {
       ...(response.data || {}),
       product: normalizeProduct(response.data?.product || response.data),
+    },
+  }
+}
+
+export async function getRegisteredSellers(search = ''): Promise<{ data: { sellers: RegisteredSeller[] } }> {
+  const response = await api.get('/auth/sellers', { params: search.trim() ? { search: search.trim() } : undefined })
+  return {
+    ...response,
+    data: {
+      ...(response.data || {}),
+      sellers: Array.isArray(response.data?.sellers) ? response.data.sellers : [],
+    },
+  }
+}
+
+export async function getRegisteredUsers(search = ''): Promise<{ data: { users: RegisteredUser[] } }> {
+  const response = await api.get('/auth/users', { params: search.trim() ? { search: search.trim() } : undefined })
+  return {
+    ...response,
+    data: {
+      ...(response.data || {}),
+      users: Array.isArray(response.data?.users) ? response.data.users : [],
     },
   }
 }
@@ -527,7 +629,16 @@ export async function getMarketPrices(): Promise<{ data: { prices: PriceData[]; 
       data: {
         ...(response.data || {}),
         prices: items.map(normalizePriceData),
-        meta: buildMarketMeta('api'),
+        meta: buildMarketMeta(
+          response.data?.meta?.source === 'external'
+            ? 'external'
+            : response.data?.meta?.source === 'database-fallback'
+              ? 'database-fallback'
+              : response.data?.meta?.source === 'external-unavailable'
+                ? 'external-unavailable'
+              : 'api',
+          response.data?.meta?.message,
+        ),
       },
     }
     marketCache.prices = result
@@ -581,15 +692,25 @@ export async function getMarketStats(): Promise<{ data: { offers: number; rating
   }
 }
 
-export async function getUserStats(userId?: string): Promise<{ data: { rating: number; totalSales: number; contracts: number; memberSinceYears: number } }> {
-  const fallback = await me().catch(() => null)
-  const createdAt = fallback?.data?.createdAt
-  const years = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24 * 365))) : 1
+export async function getUserStats(userId?: string): Promise<{ data: { rating: number | null; totalSales: number; contracts: number; memberSinceYears: number | null } }> {
+  const [profile, ordersResponse, contractsResponse, productsResponse] = await Promise.all([
+    me().catch(() => null),
+    getMyOrders(),
+    getContracts(),
+    getProducts(),
+  ])
+  const createdAt = profile?.data?.createdAt
+  const createdTimestamp = createdAt ? new Date(createdAt).getTime() : NaN
+  const years = Number.isFinite(createdTimestamp)
+    ? Math.max(0, Math.floor((Date.now() - createdTimestamp) / (1000 * 60 * 60 * 24 * 365)))
+    : null
+  const role = profile?.data?.role
+  const totalSales = role === 'agriculteur' ? productsResponse.data.products.length : ordersResponse.data.orders.length
   return {
     data: {
-      rating: 0,
-      totalSales: 0,
-      contracts: 0,
+      rating: null,
+      totalSales,
+      contracts: contractsResponse.data.contracts.length,
       memberSinceYears: years,
     },
   }
@@ -821,12 +942,12 @@ export async function getPaymentReceipt(id: string): Promise<{ data: { receiptUr
 
 export async function getContracts(): Promise<{ data: { contracts: any[] } }> {
   try {
-    const response = await api.get('/api/contracts')
+    const response = await api.get('/contracts')
     return {
       ...response,
       data: {
         ...(response.data || {}),
-        contracts: Array.isArray(response.data?.contracts) ? response.data.contracts : Array.isArray(response.data) ? response.data : [],
+          contracts: Array.isArray(response.data?.contracts) ? response.data.contracts : Array.isArray(response.data) ? response.data : [],
       },
     }
   } catch (error: any) {
@@ -839,7 +960,7 @@ export async function getContracts(): Promise<{ data: { contracts: any[] } }> {
 
 export async function getContractDetail(id: string): Promise<{ data: any }> {
   try {
-    return await api.get(`/api/contracts/${id}`)
+    return await api.get(`/contracts/${id}`)
   } catch (error: any) {
     if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
       return { data: { contract: null } }
@@ -850,7 +971,7 @@ export async function getContractDetail(id: string): Promise<{ data: any }> {
 
 export async function createContract(payload: any): Promise<{ data: any }> {
   try {
-    return await api.post('/api/contracts', payload)
+    return await api.post('/contracts', payload)
   } catch (error: any) {
     if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
       return { data: { contract: { id: 'local', ...payload } } }
@@ -861,7 +982,7 @@ export async function createContract(payload: any): Promise<{ data: any }> {
 
 export async function payContract(id: string): Promise<{ data: any }> {
   try {
-    return await api.post(`/api/contracts/${id}/pay`)
+    return await api.post(`/contracts/${id}/pay`)
   } catch (error: any) {
     if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
       return { data: { success: false } }
@@ -872,7 +993,7 @@ export async function payContract(id: string): Promise<{ data: any }> {
 
 export async function confirmDelivery(id: string): Promise<{ data: any }> {
   try {
-    return await api.post(`/api/contracts/${id}/confirm-delivery`)
+    return await api.post(`/contracts/${id}/confirm-delivery`)
   } catch (error: any) {
     if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
       return { data: { success: false } }
@@ -883,7 +1004,7 @@ export async function confirmDelivery(id: string): Promise<{ data: any }> {
 
 export async function getContractStatus(id: string): Promise<{ data: any }> {
   try {
-    return await api.get(`/api/contracts/${id}/status`)
+    return await api.get(`/contracts/${id}/status`)
   } catch (error: any) {
     if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
       return { data: { status: 'pending' } }
@@ -893,36 +1014,16 @@ export async function getContractStatus(id: string): Promise<{ data: any }> {
 }
 
 export async function createTraceabilityEntry(payload: any): Promise<{ data: any }> {
-  try {
-    return await api.post('/api/traceability', payload)
-  } catch (error: any) {
-    if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
-      return { data: { entry: { ...payload, id: 'local-trace' } } }
-    }
-    throw error
-  }
+  return await api.post('/traceability', payload)
 }
 
 export async function getTraceabilityByQrCode(qrCode: string): Promise<{ data: any }> {
-  try {
-    return await api.get(`/api/traceability/${qrCode}`)
-  } catch (error: any) {
-    if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
-      return { data: { entry: { qrCode, productId: 'demo-product', productName: 'Lot local', location: 'Non renseigné', status: 'En attente' } } }
-    }
-    throw error
-  }
+  return await api.get(`/traceability/${encodeURIComponent(qrCode)}`)
 }
 
 export async function getTraceabilityHistoryByProduct(productId: string): Promise<{ data: any }> {
-  try {
-    return await api.get(`/api/traceability/product/${productId}`)
-  } catch (error: any) {
-    if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
-      return { data: { history: [] } }
-    }
-    throw error
-  }
+  const path = productId ? `/traceability/product/${encodeURIComponent(productId)}` : '/traceability/product/all'
+  return await api.get(path)
 }
 
 // Crowdfunding helpers
@@ -936,16 +1037,26 @@ export type CrowdfundProject = {
   owner?: string
   deadline?: string
   image?: string
+  category?: string
+  sector?: string
+  location?: string
+  status?: string
+  area?: string
+  irrigation?: string
+  greenhouse?: string
+  investorsCount?: number
+  returnRate?: string | number
+  minimumInvestment?: number
+  currency?: string
+  tags?: string[]
+  details?: string[]
 }
 
-const sampleProjects: CrowdfundProject[] = [
-  { id: 'p1', title: 'Amélioration silo Maïs', summary: 'Construction d\'un silo communautaire', description: 'Silo pour stockage local', goal: 5000000, raised: 1250000, owner: 'Association Ouest', deadline: '2026-12-31' },
-  { id: 'p2', title: 'Irrigation solaire', summary: 'Pompe solaire pour petites parcelles', description: 'Irrigation durable', goal: 3000000, raised: 2100000, owner: 'Coopérative Sud', deadline: '2026-11-15' },
-]
+const emptyProjects: CrowdfundProject[] = []
 
 export async function getCrowdfundingProjects(): Promise<{ data: { projects: CrowdfundProject[] } }> {
   if (!hasStoredSession()) {
-    return { data: { projects: sampleProjects } }
+    return { data: { projects: [] } }
   }
 
   try {
@@ -954,7 +1065,7 @@ export async function getCrowdfundingProjects(): Promise<{ data: { projects: Cro
     return { ...response, data: { projects: items } }
   } catch (error: any) {
     if (isTemporaryError(error)) {
-      return { data: { projects: sampleProjects } }
+      return { data: { projects: emptyProjects } }
     }
     return { data: { projects: [] } }
   }
@@ -962,8 +1073,7 @@ export async function getCrowdfundingProjects(): Promise<{ data: { projects: Cro
 
 export async function getCrowdfundingProject(id: string): Promise<{ data: { project: CrowdfundProject | null } }> {
   if (!hasStoredSession()) {
-    const p = sampleProjects.find(s => s.id === id) || null
-    return { data: { project: p } }
+    return { data: { project: null } }
   }
 
   try {
@@ -971,16 +1081,19 @@ export async function getCrowdfundingProject(id: string): Promise<{ data: { proj
     return { ...response, data: { project: response.data?.project || response.data || null } }
   } catch (error: any) {
     if (isTemporaryError(error)) {
-      const p = sampleProjects.find(s => s.id === id) || null
+      const p = emptyProjects.find(s => s.id === id) || null
       return { data: { project: p } }
     }
     return { data: { project: null } }
   }
 }
 
+export async function createCrowdfundingProject(payload: { title: string; description: string; goal: number; deadline?: string; category?: string; location?: string; image: string }): Promise<{ data: { project: CrowdfundProject } }> {
+  return await api.post('/crowdfunding/projects', payload)
+}
+
 export async function investInProject(payload: { projectId: string; amount: number }): Promise<{ data: any }> {
   if (!hasStoredSession()) {
-    // simulate success
     return { data: { success: true, invested: payload.amount } }
   }
 
