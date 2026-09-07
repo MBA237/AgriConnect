@@ -58,9 +58,9 @@ export default function RoleSelection({ modal, onClose }: RoleSelectionProps = {
   }
 
   const roleContent = (
-    <section className={`role-card${modal ? ' modal-card' : ''}`}>
+    <section className={`role-card role-shell${modal ? ' modal-card' : ''}`}>
       {onClose ? (
-              <button type="button" className="btn-outline modal-close-button" onClick={onClose} aria-label="Fermer" title="Fermer">
+              <button type="button" className="role-close-button" onClick={onClose} aria-label="Fermer la fenêtre de sélection du rôle" title="Fermer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -95,6 +95,7 @@ export default function RoleSelection({ modal, onClose }: RoleSelectionProps = {
                 key={role.value}
                 type="button"
                 onClick={() => setSelectedRole(role.value)}
+                aria-pressed={isSelected}
                 className={`card card-clickable text-center ${isSelected ? 'selected-role' : ''}`}
               >
                 <div className="role-card-header">
@@ -110,11 +111,6 @@ export default function RoleSelection({ modal, onClose }: RoleSelectionProps = {
         </div>
 
         <div className="role-action">
-          <p className="text-slate-600">
-            {selectedRole
-              ? `Vous avez choisi ${selectedRole.replace('-', ' ')}. Vous pouvez créer un compte ou vous connecter directement.`
-              : 'Sélectionnez un rôle pour continuer vers l’inscription ou la connexion.'}
-          </p>
           <div className="role-action-buttons flex gap-3 mt-6">
             <button type="button" disabled={!selectedRole} onClick={handleCreateAccount} className="btn-primary w-full md:w-auto">
               Créer un compte
@@ -130,7 +126,7 @@ export default function RoleSelection({ modal, onClose }: RoleSelectionProps = {
   if (modal) {
     return (
       <div className="auth-overlay" onClick={onClose}>
-        <div className="auth-modal" onClick={event => event.stopPropagation()}>
+        <div className="auth-modal role-dialog" onClick={event => event.stopPropagation()}>
           {roleContent}
         </div>
       </div>

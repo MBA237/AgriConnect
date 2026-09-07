@@ -5,6 +5,17 @@ body,
   height: 100%;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
 :root {
   --primary: #2F5233;
   --primary-light: #4C7A4F;
@@ -66,12 +77,24 @@ body,
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background: var(--bg-body);
   color: var(--text-primary);
   transition: background 0.28s ease, color 0.28s ease;
 }
 
 button, input, select, textarea { font: inherit; }
+
+img,
+svg,
+video {
+  max-width: 100%;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
 
 .header-nav-link:hover,
 .header-nav-link.active {
@@ -241,6 +264,7 @@ body, .site-header, .card, .btn-primary {
   background: var(--bg-card);
   color: var(--text-primary);
   max-width: 920px;
+  animation: alert-enter 180ms ease-out both;
 }
 .alert-left { display:flex; align-items:center; justify-content:center; width:36px; }
 .alert-icon { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; background: rgba(0,0,0,0.04); color: var(--primary); }
@@ -261,6 +285,11 @@ body, .site-header, .card, .btn-primary {
 
 .alert-info { border-color: rgba(42,92,115,0.08); }
 .alert-info .alert-icon { background: linear-gradient(180deg, rgba(42,92,115,0.12), rgba(42,92,115,0.06)); color: var(--info); }
+
+@keyframes alert-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 :root[data-theme='dark'] .alert {
   background: var(--bg-card);
@@ -1836,11 +1865,11 @@ body, .site-header, .card, .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
-  border: none;
-  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.18);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #52605a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
   cursor: pointer;
   font-weight: 700;
   line-height: 1;
@@ -1849,13 +1878,16 @@ body, .site-header, .card, .btn-primary {
 }
 
 .modal-close-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(0.95);
+  background: #f3f6f3;
+  border-color: rgba(47, 82, 51, 0.28);
+  color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
 
 .modal-close-button:focus {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+  outline: 3px solid rgba(76, 122, 79, 0.28);
+  outline-offset: 3px;
 }
 
 .role-card.modal-card .role-grid {

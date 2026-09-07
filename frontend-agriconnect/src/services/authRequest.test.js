@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildAuthRequestPayload, buildAuthVerifyPayload } from './authRequest.js'
+import { buildAuthRequestPayload, buildAuthVerifyPayload } from './authRequest'
 
 test('buildAuthRequestPayload uses identifier/type contract for email login', () => {
   const payload = buildAuthRequestPayload({

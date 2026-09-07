@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type { AuthMode } from './authFlow'
-import { buildAuthRequestPayload, buildAuthVerifyPayload } from './authRequest.js'
+import { buildAuthRequestPayload, buildAuthVerifyPayload } from './authRequest'
 
 export type Product = {
   id: string
@@ -329,15 +329,6 @@ export async function requestOtp(payload: {
   try {
     return await api.post('/auth/request-otp', backendPayload)
   } catch (error: any) {
-    if (error?.response?.status === 500 || error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
-      return {
-        data: {
-          success: true,
-          message: 'OTP traité localement',
-          code: '000000',
-        },
-      }
-    }
     throw error
   }
 }
@@ -368,20 +359,6 @@ export async function verifyOtp(payload: { deliveryMethod: 'email' | 'phone'; em
       },
     }
   } catch (error: any) {
-    if (error?.response?.status === 500 || error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
-      const fallbackEmail = payload.email || (payload.phone ? `${String(payload.phone).replace(/\D/g, '')}@agriconnect.local` : 'user@agriconnect.local')
-      return {
-        data: {
-          token: `session-${Date.now()}`,
-          user: normalizeUser({
-            id: 'local-user',
-            fullName: payload.email || payload.phone || 'Utilisateur',
-            email: fallbackEmail,
-            role: mapRoleToBackend(payload.role || 'BUYER_PARTICULIER'),
-          }, fallbackEmail),
-        },
-      }
-    }
     throw error
   }
 }

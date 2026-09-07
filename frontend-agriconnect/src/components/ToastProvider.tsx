@@ -23,7 +23,7 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
   const push = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2, 9)
     const toast: Toast = { id, ...t }
-    setToasts(s => [toast, ...s])
+    setToasts(s => [toast, ...s].slice(0, 4))
     return id
   }, [])
 
@@ -32,9 +32,9 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
   return (
     <ToastContext.Provider value={{ push, remove }}>
       {children}
-      <div className="toast-viewport" aria-live="polite">
+      <div className="toast-viewport" aria-live="polite" aria-atomic="false">
         {toasts.map(t => (
-          <div key={t.id} style={{ marginBottom: 12 }}>
+          <div className="toast-item" key={t.id}>
             <Alert
               type={t.type}
               title={t.title}

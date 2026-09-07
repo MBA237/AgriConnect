@@ -1,9 +1,43 @@
-function normalizePhoneIdentifier(value) {
+import type { AuthMode } from './authFlow'
+
+type DeliveryMethod = 'email' | 'phone'
+type BackendAuthMode = 'login' | 'register'
+
+type AuthRequestInput = {
+  deliveryMethod: DeliveryMethod
+  email?: string
+  phone?: string
+  role?: string
+  mode?: AuthMode
+}
+
+type AuthVerifyInput = AuthRequestInput & {
+  code: string
+  firstName?: string
+  lastName?: string
+  password?: string
+}
+
+type AuthRequestPayload = {
+  identifier: string
+  type: 'email' | 'contact'
+  role: string
+  mode: BackendAuthMode
+}
+
+type AuthVerifyPayload = AuthRequestPayload & {
+  otp: string
+  code: string
+  fullName?: string
+  password?: string
+}
+
+function normalizePhoneIdentifier(value: string | undefined) {
   if (!value) return ''
   return value.replace(/\D/g, '')
 }
 
-function mapRoleToBackend(role) {
+function mapRoleToBackend(role: string | undefined) {
   switch (role) {
     case 'agriculteur':
     case 'FARMER':
@@ -21,7 +55,7 @@ function mapRoleToBackend(role) {
   }
 }
 
-export function buildAuthRequestPayload({ deliveryMethod, email, phone, role, mode }) {
+export function buildAuthRequestPayload({ deliveryMethod, email, phone, role, mode }: AuthRequestInput): AuthRequestPayload {
   const identifier = deliveryMethod === 'email' ? (email || '').trim() : normalizePhoneIdentifier(phone)
   const type = deliveryMethod === 'email' ? 'email' : 'contact'
 
@@ -33,12 +67,12 @@ export function buildAuthRequestPayload({ deliveryMethod, email, phone, role, mo
   }
 }
 
-export function buildAuthVerifyPayload({ deliveryMethod, email, phone, code, mode, role, firstName, lastName, password }) {
+export function buildAuthVerifyPayload({ deliveryMethod, email, phone, code, mode, role, firstName, lastName, password }: AuthVerifyInput): AuthVerifyPayload {
   const identifier = deliveryMethod === 'email' ? (email || '').trim() : normalizePhoneIdentifier(phone)
   const type = deliveryMethod === 'email' ? 'email' : 'contact'
   const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
 
-  const payload = {
+  const payload: AuthVerifyPayload = {
     identifier,
     type,
     otp: code,

@@ -21,7 +21,6 @@ export default function Onboarding() {
         <img src={hero1} alt="AgriConnect hero background" className="hero-bg" width={1440} height={720} />
         <div className="landing-copy">
           <p className="eyebrow"><span className="point"></span>AgriConnect</p>
-          <br />
           <img src={logo} alt="AgriConnect Logo" className="landing-logo" />
           <h1 className="landing-title">
             Une plateforme professionnelle pour relier producteurs et acheteurs.
@@ -29,7 +28,7 @@ export default function Onboarding() {
           <p className="landing-description">
             Un parcours simple et centré sur votre rôle, du lancement à la connexion.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="landing-actions">
             <button type="button" onClick={() => navigate('/role-selection')} className="btn-primary landing-cta">
               Créer un compte
             </button>

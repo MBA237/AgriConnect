@@ -1,11 +1,12 @@
 ﻿.landing-page {
   width: 100%;
   min-height: 100vh;
-  height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
 }
@@ -13,7 +14,8 @@
 .landing-hero {
   width: 100%;
   min-height: 100vh;
-  height: 100%;
+  min-height: 100dvh;
+  height: auto;
   position: relative;
   overflow: hidden;
   background-size: cover;
@@ -51,7 +53,8 @@
   display: grid;
   place-items: center;
   gap: 1.25rem;
-  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -124,17 +127,26 @@
   justify-content: center;
 }
 
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
 @media (max-width: 1200px) {
   .landing-hero {
-    min-height: 560px;
-    height: 86vh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
   }
 }
 
 @media (max-width: 860px) {
   .landing-copy {
     width: min(96vw, 740px);
-    padding: 24px 18px;
+    padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
     gap: 1rem;
   }
 
@@ -148,6 +160,7 @@
 
   .landing-description {
     font-size: 1rem;
+    line-height: 1.45;
   }
 
   .landing-hero .eyebrow {
@@ -160,7 +173,7 @@
 @media (max-width: 600px) {
   .landing-copy {
     width: min(100vw, 540px);
-    padding: 18px 14px;
+    padding: max(18px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
     gap: 0.9rem;
   }
 
@@ -180,7 +193,30 @@
   }
 
   .landing-cta {
-    min-width: 200px;
+    flex: 1 1 200px;
+    min-width: min(200px, 100%);
     padding: 12px 24px;
+  }
+
+  .landing-actions {
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 380px) {
+  .landing-logo {
+    width: 118px;
+  }
+
+  .landing-title {
+    font-size: 1.7rem;
+  }
+
+  .landing-description {
+    font-size: 0.95rem;
+  }
+
+  .landing-cta {
+    flex-basis: 100%;
   }
 }

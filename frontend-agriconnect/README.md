@@ -1,5 +1,19 @@
 # React + Vite
 
+## Deploy on Vercel
+
+Create a Vercel project connected to this repository and set its **Root Directory** to `AgriConnect/frontend-agriconnect`.
+
+Vercel detects Vite automatically. The production build settings are:
+
+- Build command: `npm run build`
+- Output directory: `dist`
+- Install command: `npm ci`
+
+Copy the variables from `.env.example` into the Vercel project settings under **Settings > Environment Variables**. Add them for Production (and Preview when needed), then redeploy. `VITE_API_BASE_URL` must point to the deployed backend API, and WebSocket variables must use `wss://` in production.
+
+The included `vercel.json` rewrites application routes to `index.html`, so React Router deep links work after deployment.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

@@ -6,6 +6,8 @@ import { resolveAuthMode } from '../../services/authFlow'
 import agriculteurImg from '../../assets/agriculteurImg.png'
 import acheteurImg from '../../assets/acheteurImg.png'
 import particulierImg from '../../assets/particulierImg.png'
+import connexionImage from '../../assets/connexion.jpg'
+import inscriptionImage from '../../assets/inscription.jpg'
 import ReactCountryFlag from 'react-country-flag'
 import Alert from '../../components/Alert'
 import './Auth.css'
@@ -103,6 +105,16 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
     setFeedback(null)
   }
 
+  const handleGoogleLogin = () => {
+    const googleAuthUrl = import.meta.env.VITE_GOOGLE_AUTH_URL?.trim()
+    if (!googleAuthUrl) {
+      setFeedback({ type: 'error', message: 'La connexion avec Google doit encore être configurée par l’administrateur.' })
+      return
+    }
+
+    window.location.assign(googleAuthUrl)
+  }
+
   const handleSubmit = async () => {
     if (isSubmitting) return
     const identity = deliveryMethod === 'email' ? email.trim() : phone.trim()
@@ -188,10 +200,17 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
 
       login(token, buildUserFromAuthResponse(userPayload, email, phone, role))
       setFeedback({ type: 'success', message: mode === 'register' ? 'Compte créé avec succès.' : 'Connexion réussie.' })
-      if (onClose) onClose()
-      navigate('/home', { replace: true })
+      window.setTimeout(() => {
+        if (onClose) onClose()
+        navigate('/home', { replace: true })
+      }, 700)
     } catch (error: any) {
-      const message = error?.response?.data?.error || error?.message || 'La tentative a échoué. Réessayez.'
+      const serverMessage = error?.response?.data?.error
+      const message = error?.response?.data?.code === 'EMAIL_SERVICE_UNAVAILABLE'
+        ? 'L’envoi du code est momentanément indisponible. Vérifiez votre adresse e-mail ou réessayez dans quelques instants.'
+        : serverMessage || (error?.code === 'ERR_NETWORK'
+          ? 'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
+          : error?.message || 'La tentative a échoué. Réessayez.')
       setFeedback({ type: 'error', message })
     } finally {
       setIsSubmitting(false)
@@ -200,28 +219,16 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
 
   const content = (
     <>
-      <div className="modal-top">
-        <div className="modal-top-inner">
-          <div className="brand">
-            <div className="brand-mark" aria-hidden="true">🌾</div>
-            <div className="brand-text">
-              <strong>AgriConnect</strong>
-              <div className="tagline">Connexion sécurisée et rapide</div>
-            </div>
-          </div>
-          <div className="modal-cta">
-            <div className="secure-badge">Sécurisé</div>
-          </div>
-        </div>
-      </div>
-      <div className="page-header">
-        <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Connexion</p>
-          <h1>{heading}</h1>
+      <div className="page-header auth-header">
+        <div className="auth-heading-group">
+          <p className="auth-kicker">
+            {mode === 'register' ? 'Inscription' : 'Connexion'}
+          </p>
+          <h1 className="auth-heading">{heading}</h1>
         </div>
         {modal && onClose ? (
           <div>
-            <button type="button" className="btn-outline modal-close-button" onClick={onClose} aria-label="Fermer" title="Fermer">
+            <button type="button" className="auth-close-button" onClick={onClose} aria-label="Fermer la fenêtre de connexion" title="Fermer">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -231,7 +238,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
         ) : null}
       </div>
 
-      <p className="text-slate-600">
+      <p className="auth-intro">
         {mode === 'choice'
           ? 'Choisissez si vous souhaitez vous connecter ou créer un nouveau compte.'
           : mode === 'register'
@@ -300,6 +307,16 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
               Par téléphone
             </button>
           </div>
+
+          {mode === 'login' && !otpRequested ? (
+            <>
+              <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
+                <span className="google-mark" aria-hidden="true">G</span>
+                <span>Continuer avec Google</span>
+              </button>
+              <div className="auth-divider" aria-hidden="true"><span>ou avec votre e-mail</span></div>
+            </>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="input-group">
@@ -375,8 +392,27 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   if (modal) {
     return (
       <div className="auth-overlay" onClick={onClose}>
-        <div className="auth-modal" onClick={event => event.stopPropagation()}>
-          <div className="auth-card modal-card">{content}</div>
+        <div className="auth-dialog" onClick={event => event.stopPropagation()}>
+          <aside className="auth-visual" aria-label={mode === 'register' ? 'Créer un compte sécurisé' : 'Connexion sécurisée'}>
+            <img
+              src={mode === 'register' ? inscriptionImage : connexionImage}
+              alt=""
+              className="auth-visual-image"
+            />
+            <div className="auth-visual-shade" />
+            <div className="auth-visual-content">
+              <span className="auth-visual-kicker">AgriConnect</span>
+              <h2>{mode === 'register' ? 'Votre espace commence ici.' : 'Vos échanges, en toute confiance.'}</h2>
+              <p>{mode === 'register' ? 'Créez un compte simple, sécurisé et prêt pour vos projets agricoles.' : 'Retrouvez vos commandes, contrats et opportunités agricoles.'}</p>
+              <div className="auth-visual-status">
+                <span className="auth-status-dot" />
+                Connexion protégée
+              </div>
+            </div>
+          </aside>
+          <div className="auth-card modal-card">
+            <div className="modal-card-scroll">{content}</div>
+          </div>
         </div>
       </div>
     )

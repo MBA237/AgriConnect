@@ -20,7 +20,7 @@ export default function Alert({ type = 'info', title, message, onClose, autoClos
   }, [autoClose, onClose])
 
   return (
-    <div className={`alert alert-${type} ${className ?? ''}`} role="alert" aria-live="polite">
+    <div className={`alert alert-${type} ${className ?? ''}`} role={type === 'error' ? 'alert' : 'status'} aria-live={type === 'error' ? 'assertive' : 'polite'} aria-atomic="true">
       <div className="alert-left">
         <span className="alert-icon" aria-hidden="true">
           {type === 'success' && (
@@ -43,7 +43,7 @@ export default function Alert({ type = 'info', title, message, onClose, autoClos
         <div className="alert-message">{message}</div>
       </div>
 
-      <button className="alert-close" aria-label="Fermer" onClick={() => onClose && onClose()}>
+      <button type="button" className="alert-close" aria-label="Fermer la notification" onClick={() => onClose && onClose()}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
     </div>
