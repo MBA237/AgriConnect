@@ -206,11 +206,13 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
       }, 700)
     } catch (error: any) {
       const serverMessage = error?.response?.data?.error
-      const message = error?.response?.data?.code === 'EMAIL_SERVICE_UNAVAILABLE'
-        ? 'L’envoi du code est momentanément indisponible. Vérifiez votre adresse e-mail ou réessayez dans quelques instants.'
-        : serverMessage || (error?.code === 'ERR_NETWORK'
-          ? 'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
-          : error?.message || 'La tentative a échoué. Réessayez.')
+      const message = error?.response?.status === 503 || error?.response?.data?.code === 'EMAIL_SERVICE_UNAVAILABLE' || error?.response?.data?.code === 'DEPENDENCY_UNAVAILABLE'
+        ? 'L’envoi du code est indisponible. Le service e-mail ou Redis doit être configuré sur Render.'
+        : error?.code === 'ECONNABORTED'
+          ? 'Le serveur met trop de temps à répondre. Vérifiez la configuration SMTP sur Render puis réessayez.'
+          : serverMessage || (error?.code === 'ERR_NETWORK'
+            ? 'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
+            : error?.message || 'La tentative a échoué. Réessayez.')
       setFeedback({ type: 'error', message })
     } finally {
       setIsSubmitting(false)
