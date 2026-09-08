@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import './Chat.css'
 import { getChatMessages, sendChatMessage } from '../services/api'
 
 export default function Chat({ room = 'global' }: { room?: string }) {
+  const [searchParams] = useSearchParams()
+  const conversationUserId = searchParams.get('userId') || room
   const [messages, setMessages] = useState<Array<{ id: string; from: string; text: string; ts?: string }>>([])
   const [text, setText] = useState('')
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'disabled'>('disabled')
@@ -45,7 +48,7 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     }
 
     return () => { mounted = false; if (wsRef.current) wsRef.current.close() }
-  }, [room])
+  }, [conversationUserId])
 
   useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight }, [messages])
 
@@ -56,7 +59,7 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     setMessages(prev => [...prev, msg])
     setText('')
     try {
-      await sendChatMessage({ receiverId: room, text: msg.text })
+      await sendChatMessage({ receiverId: conversationUserId, text: msg.text })
     } catch (err) {
       // ignore for now
     }

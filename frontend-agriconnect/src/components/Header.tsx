@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import useSession from '../hooks/useSession'
+import { getNotifications } from '../services/api'
 import './Header.css'
 
 const quickLinks = [
@@ -15,6 +16,26 @@ const quickLinks = [
 export default function Header() {
   const { session } = useSession()
   const navigate = useNavigate()
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    const loadNotificationCount = async () => {
+      try {
+        const response = await getNotifications()
+        if (mounted) setNotificationCount(Array.isArray(response.data?.notifications) ? response.data.notifications.length : 0)
+      } catch {
+        if (mounted) setNotificationCount(0)
+      }
+    }
+
+    loadNotificationCount()
+    const timer = window.setInterval(loadNotificationCount, 15000)
+    return () => {
+      mounted = false
+      window.clearInterval(timer)
+    }
+  }, [])
 
   const THEME_KEY = 'agriTheme'
   const [theme, setTheme] = useState<string>(() => {
@@ -132,11 +153,11 @@ export default function Header() {
           </button>
         </div>
 
-        <button className="notif-btn" onClick={() => alert('📬 Vous avez 5 notifications')}>
+        <button className="notif-btn" onClick={() => navigate('/notifications')} aria-label={`Ouvrir les notifications (${notificationCount})`}>
           <svg className="notif-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2zm6-6V11c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
           </svg>
-          <span className="badge">5</span>
+          <span className="badge">{notificationCount}</span>
         </button>
 
         <div className="user-badge" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
