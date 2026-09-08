@@ -364,8 +364,47 @@ export async function verifyOtp(payload: { deliveryMethod: 'email' | 'phone'; em
   }
 }
 
-export async function loginRequest(payload: { email?: string; password?: string }) {
-  return api.post('/auth/login', payload)
+export async function loginRequest(payload: { identifier: string; type: 'email' | 'contact'; password: string }) {
+  const response = await api.post('/auth/login', payload)
+  const token = response?.data?.accessToken || response?.data?.token || response?.data?.access_token || null
+  const normalizedEmail = response?.data?.user?.email || (payload.type === 'email' ? payload.identifier : `${payload.identifier}@agriconnect.local`)
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      token,
+      user: normalizeUser(response.data?.user, normalizedEmail),
+    },
+  }
+}
+
+export async function googleUser(token: string) {
+  const response = await api.get('/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return response.data
+}
+
+export async function registerRequest(payload: {
+  identifier: string
+  type: 'email' | 'contact'
+  password: string
+  fullName: string
+  role: string
+}) {
+  const response = await api.post('/auth/register', payload)
+  const token = response?.data?.accessToken || response?.data?.token || response?.data?.access_token || null
+  const normalizedEmail = response?.data?.user?.email || (payload.type === 'email' ? payload.identifier : `${payload.identifier}@agriconnect.local`)
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      token,
+      user: normalizeUser(response.data?.user, normalizedEmail),
+    },
+  }
 }
 
 export async function refreshToken(payload: { refreshToken: string }) {

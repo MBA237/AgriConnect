@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import useSession, { UserRole } from '../../hooks/useSession'
-import { requestOtp, verifyOtp } from '../../services/api'
+import { googleUser, loginRequest, registerRequest } from '../../services/api'
 import { resolveAuthMode } from '../../services/authFlow'
 import agriculteurImg from '../../assets/agriculteurImg.png'
 import acheteurImg from '../../assets/acheteurImg.png'
@@ -66,16 +66,37 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   const [countryCode, setCountryCode] = useState('+237')
   const [gender, setGender] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'phone'>('email')
-  const [otpCode, setOtpCode] = useState('')
   const selectedCountry = COUNTRY_OPTIONS.find(option => option.dialCode === countryCode)
   const [password, setPassword] = useState('')
-  const [otpRequested, setOtpRequested] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackState | null>(null)
   const initialMode = resolveAuthMode(searchParams.get('mode'))
   const [mode, setMode] = useState<'choice' | 'register' | 'login'>(initialMode)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { login, isAuthenticated } = useSession()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const googleToken = searchParams.get('google_token')
+    const googleError = searchParams.get('google_error')
+    if (googleError) {
+      setFeedback({ type: 'error', message: googleError })
+      return
+    }
+    if (!googleToken) return
+
+    let cancelled = false
+    googleUser(googleToken)
+      .then(user => {
+        if (cancelled) return
+        login(googleToken, buildUserFromAuthResponse(user, user?.email || '', user?.contact || '', role))
+        navigate('/home', { replace: true })
+      })
+      .catch(() => {
+        if (!cancelled) setFeedback({ type: 'error', message: 'Impossible de finaliser la connexion Google.' })
+      })
+
+    return () => { cancelled = true }
+  }, [login, navigate, role, searchParams])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -99,14 +120,13 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
   }, [mode])
 
   const resetFlow = () => {
-    setOtpRequested(false)
-    setOtpCode('')
     setPassword('')
     setFeedback(null)
   }
 
   const handleGoogleLogin = () => {
-    const googleAuthUrl = import.meta.env.VITE_GOOGLE_AUTH_URL?.trim()
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+    const googleAuthUrl = import.meta.env.VITE_GOOGLE_AUTH_URL?.trim() || `${apiBaseUrl}/auth/google`
     if (!googleAuthUrl) {
       setFeedback({ type: 'error', message: 'La connexion avec Google doit encore être configurée par l’administrateur.' })
       return
@@ -123,7 +143,12 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
       return
     }
 
-    if (mode === 'register' && !otpRequested && (!firstName.trim() || !lastName.trim() || !gender.trim())) {
+    if (!password.trim()) {
+      setFeedback({ type: 'error', message: 'Veuillez saisir votre mot de passe.' })
+      return
+    }
+
+    if (mode === 'register' && (!firstName.trim() || !lastName.trim() || !gender.trim())) {
       setFeedback({ type: 'error', message: 'Veuillez renseigner votre prénom, nom et sexe.' })
       return
     }
@@ -132,65 +157,30 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
     setFeedback(null)
 
     try {
-      if (!otpRequested) {
-        // normalize phone when sending OTP
-        let normalizedPhone: string | undefined = undefined
-        if (deliveryMethod === 'phone') {
-          const digits = phone.replace(/\D/g, '')
-          if (countryCode === '+237') {
-            if (digits.length !== 9) {
-              setFeedback({ type: 'error', message: 'Numéro invalide pour le Cameroun — 9 chiffres requis.' })
-              setIsSubmitting(false)
-              return
-            }
-          } else {
-            if (digits.length < 6 || digits.length > 15) {
-              setFeedback({ type: 'error', message: 'Numéro de téléphone invalide.' })
-              setIsSubmitting(false)
-              return
-            }
-          }
-          normalizedPhone = `${countryCode}${digits}`
-        }
-
-        await requestOtp({
-          deliveryMethod,
-          email: deliveryMethod === 'email' ? email : undefined,
-          phone: deliveryMethod === 'phone' ? normalizedPhone : undefined,
-          role,
-          firstName,
-          lastName,
-          gender,
-          mode,
-        })
-        setOtpRequested(true)
-        setFeedback({ type: 'success', message: 'Un code de vérification a été envoyé. Vérifiez votre boîte mail ou votre téléphone.' })
-        return
-      }
-
-      if (!otpCode.trim()) {
-        setFeedback({ type: 'error', message: 'Veuillez saisir le code reçu.' })
-        return
-      }
-
-      // normalize phone for verification as well
-      let normalizedPhoneVerify: string | undefined = undefined
+      let normalizedPhone: string | undefined
       if (deliveryMethod === 'phone') {
         const digits = phone.replace(/\D/g, '')
-        normalizedPhoneVerify = `${countryCode}${digits}`
+        if (countryCode === '+237' && digits.length !== 9) {
+          setFeedback({ type: 'error', message: 'Numéro invalide pour le Cameroun — 9 chiffres requis.' })
+          return
+        }
+        if (countryCode !== '+237' && (digits.length < 6 || digits.length > 15)) {
+          setFeedback({ type: 'error', message: 'Numéro de téléphone invalide.' })
+          return
+        }
+        normalizedPhone = `${countryCode}${digits}`
       }
 
-      const response = await verifyOtp({
-        deliveryMethod,
-        email: deliveryMethod === 'email' ? email : undefined,
-        phone: deliveryMethod === 'phone' ? normalizedPhoneVerify : undefined,
-        code: otpCode,
-        mode,
-        role,
-        firstName: mode === 'register' ? firstName : undefined,
-        lastName: mode === 'register' ? lastName : undefined,
-        ...(mode === 'register' ? { password } : {}),
-      })
+      const identifierValue = deliveryMethod === 'email' ? email.trim() : normalizedPhone!.replace(/\D/g, '')
+      const response = mode === 'login'
+        ? await loginRequest({ identifier: identifierValue, type: deliveryMethod === 'email' ? 'email' : 'contact', password })
+        : await registerRequest({
+          identifier: identifierValue,
+          type: deliveryMethod === 'email' ? 'email' : 'contact',
+          password,
+          fullName: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          role: role === 'agriculteur' ? 'FARMER' : role === 'acheteur-pro' ? 'BUYER_PRO' : 'BUYER_PARTICULIER',
+        })
 
       const token = response?.data?.token || response?.data?.accessToken || response?.data?.access_token || null
       const userPayload = response?.data?.user
@@ -198,7 +188,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
         throw new Error('La réponse du serveur ne contient pas de session.')
       }
 
-      login(token, buildUserFromAuthResponse(userPayload, email, phone, role))
+      login(token, buildUserFromAuthResponse(userPayload, email, normalizedPhone || phone, role))
       setFeedback({ type: 'success', message: mode === 'register' ? 'Compte créé avec succès.' : 'Connexion réussie.' })
       window.setTimeout(() => {
         if (onClose) onClose()
@@ -244,8 +234,8 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
         {mode === 'choice'
           ? 'Choisissez si vous souhaitez vous connecter ou créer un nouveau compte.'
           : mode === 'register'
-            ? 'Choisissez votre méthode de réception du code puis validez votre compte en quelques secondes.'
-            : 'Saisissez votre e-mail ou votre téléphone, recevez un code de sécurité puis connectez-vous.'}
+            ? 'Renseignez vos informations et choisissez un mot de passe pour créer votre compte.'
+            : 'Saisissez votre e-mail ou votre téléphone et votre mot de passe pour vous connecter.'}
       </p>
 
       {feedback ? (
@@ -276,7 +266,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
         </div>
       ) : (
         <div className="card space-y-6 auth-form-card">
-          {mode === 'register' && !otpRequested ? (
+          {mode === 'register' ? (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="input-group">
                 <label>Prénom</label>
@@ -289,7 +279,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
             </div>
           ) : null}
 
-          {mode === 'register' && !otpRequested ? (
+          {mode === 'register' ? (
             <div className="input-group">
               <label>Sexe</label>
               <select value={gender} onChange={event => setGender(event.target.value)}>
@@ -310,7 +300,7 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
             </button>
           </div>
 
-          {mode === 'login' && !otpRequested ? (
+          {mode === 'login' ? (
             <>
               <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
                 <span className="google-mark" aria-hidden="true">G</span>
@@ -362,24 +352,18 @@ export default function Auth({ role: propRole, onClose, modal }: AuthProps = {})
                 </div>
               )}
             </div>
-            {otpRequested ? (
-              <div className="input-group">
-                <label>Code de vérification</label>
-                <input type="text" value={otpCode} onChange={event => setOtpCode(event.target.value)} placeholder="000000" />
-              </div>
-            ) : null}
           </div>
 
-          {mode === 'register' && otpRequested ? (
+          {mode === 'login' || mode === 'register' ? (
             <div className="input-group">
-              <label>Créer un mot de passe</label>
-              <input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="Choisissez un mot de passe" />
+              <label>Mot de passe</label>
+              <input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="Votre mot de passe" />
             </div>
           ) : null}
 
           <div className="form-actions">
             <button type="button" onClick={handleSubmit} className="btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Traitement...' : otpRequested ? (mode === 'register' ? 'Valider mon compte' : 'Se connecter') : 'Envoyer le code'}
+              {isSubmitting ? 'Traitement...' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
             </button>
 
             <button type="button" className="btn-outline" onClick={() => { resetFlow(); setMode('choice') }}>
