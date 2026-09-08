@@ -13,7 +13,7 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     let mounted = true
     const loadHistory = async () => {
       try {
-        const res = await getChatMessages({ room })
+        const res = await getChatMessages(room)
         if (mounted) setMessages(Array.isArray(res.data?.messages) ? res.data.messages : [])
       } catch (err) {
         // ignore
@@ -56,7 +56,7 @@ export default function Chat({ room = 'global' }: { room?: string }) {
     setMessages(prev => [...prev, msg])
     setText('')
     try {
-      await sendChatMessage({ room, text: msg.text })
+      await sendChatMessage({ receiverId: room, text: msg.text })
     } catch (err) {
       // ignore for now
     }

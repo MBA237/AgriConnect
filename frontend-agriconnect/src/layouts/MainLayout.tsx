@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import FloatingChat from '../components/FloatingChat'
 import './MainLayout.css'
 
 export default function MainLayout() {
@@ -16,6 +17,7 @@ export default function MainLayout() {
         </main>
       </div>
       <Footer />
+      <FloatingChat />
     </div>
   )
 }

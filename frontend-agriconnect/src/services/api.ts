@@ -1191,44 +1191,29 @@ export async function moderateProduct(payload: { productId: string; action: stri
 }
 
 export async function getNotifications(): Promise<{ data: { notifications: any[] } }> {
-  try {
-    const res = await api.get('/notifications')
-    const items = Array.isArray(res?.data) ? res.data : res.data?.notifications || []
-    return { ...res, data: { notifications: items } }
-  } catch (error: any) {
-    return { data: { notifications: [
-      { id: 'n1', title: 'Bienvenue', body: 'Merci de tester AgriConnect', read: false, ts: new Date().toISOString() },
-      { id: 'n2', title: 'Contrat expiring', body: 'Un contrat arrive à échéance', read: true, ts: new Date().toISOString() }
-    ] } }
-  }
+  const res = await api.get('/notifications')
+  const items = Array.isArray(res?.data) ? res.data : res.data?.notifications || []
+  return { ...res, data: { notifications: items } }
 }
 
 export async function createNotification(payload: { title: string; body: string }) {
-  try {
-    const res = await api.post('/notifications', payload)
-    return res
-  } catch (error) {
-    const n = { id: 'local-' + Date.now(), title: payload.title, body: payload.body, read: false, ts: new Date().toISOString() }
-    return { data: { notification: n } }
-  }
+  return api.post('/notifications', payload)
 }
 
-export async function getChatMessages(opts?: { room?: string }) {
-  try {
-    const res = await api.get('/chat/messages', { params: opts })
-    return res
-  } catch (error) {
-    return { data: { messages: [ { id: 'm1', from: 'system', text: 'Bienvenue sur le chat', ts: new Date().toISOString() } ] } }
-  }
+export async function markNotificationRead(id: string, read = true) {
+  return api.patch(`/notifications/${id}/read`, { read })
 }
 
-export async function sendChatMessage(payload: { room?: string; text: string }) {
-  try {
-    const res = await api.post('/chat/messages', payload)
-    return res
-  } catch (error) {
-    return { data: { ok: true } }
-  }
+export async function getChatConversations() {
+  return api.get('/chat/conversations')
+}
+
+export async function getChatMessages(userId: string) {
+  return api.get('/chat/messages', { params: { userId } })
+}
+
+export async function sendChatMessage(payload: { receiverId: string; text: string }) {
+  return api.post('/chat/messages', payload)
 }
 
 export default api

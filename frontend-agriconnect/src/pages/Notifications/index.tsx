@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import NotificationItem, { Notification } from '../../components/NotificationItem'
-import { createNotification, getNotifications } from '../../services/api'
+import { getNotifications, markNotificationRead } from '../../services/api'
 import './Notifications.css';
 
 export default function Notifications() {
@@ -25,17 +25,17 @@ export default function Notifications() {
     return () => { mounted = false }
   }, [])
 
-  const handleCreate = async () => {
+  const toggleRead = async (id: string) => {
+    const item = items.find(notification => notification.id === id)
+    if (!item) return
+    const nextRead = !item.read
     try {
-      const res = await createNotification({ title: 'Nouvelle alerte', body: 'Test de notification' })
-      const n = res.data?.notification
-      if (n) setItems(prev => [n, ...prev])
+      await markNotificationRead(id, nextRead)
+      setItems(prev => prev.map(i => i.id === id ? { ...i, read: nextRead } : i))
     } catch (err) {
-      // ignore
+      setError('Impossible de mettre à jour la notification')
     }
   }
-
-  const toggleRead = (id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, read: !i.read } : i))
 
   return (
     <section className="page">
@@ -43,9 +43,6 @@ export default function Notifications() {
         <div>
           <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Notifications</p>
           <h1>Notifications récentes</h1>
-        </div>
-        <div>
-          <button className="btn-primary" onClick={handleCreate}>Créer notification</button>
         </div>
       </div>
 
