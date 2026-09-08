@@ -93,6 +93,8 @@ export default function useSession() {
   }
 
   const logout = () => {
+    localStorage.setItem('agriTheme', 'light')
+    document.documentElement.setAttribute('data-theme', 'light')
     applySession({ token: null, user: null, accountVerified: false })
   }
 
