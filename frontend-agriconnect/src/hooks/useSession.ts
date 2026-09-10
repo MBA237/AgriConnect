@@ -106,24 +106,11 @@ export default function useSession() {
     })
   }
 
-  const changeRole = (role: UserRole) => {
-    if (!currentSession.user) {
-      return
-    }
-
-    applySession({
-      ...currentSession,
-      user: { ...currentSession.user, role },
-      accountVerified: Boolean(currentSession.token && currentSession.user),
-    })
-  }
-
   return {
     session,
     isAuthenticated: hasActiveSession(session),
     login,
     logout,
     updateUser,
-    changeRole,
   }
 }

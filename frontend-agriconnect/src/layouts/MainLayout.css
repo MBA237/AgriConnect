@@ -25,6 +25,11 @@
     width: 210px;
     padding: 14px;
     border-radius: 18px;
+    position: relative;
+    top: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -42,7 +47,11 @@
     gap: 10px;
     padding: 10px;
     margin-bottom: 14px;
+    position: static;
+    height: auto;
+    max-height: none;
     overflow-x: auto;
+    overflow-y: hidden;
     border-radius: 14px;
   }
 

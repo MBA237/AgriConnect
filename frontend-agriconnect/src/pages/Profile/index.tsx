@@ -1,33 +1,13 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import useSession, { UserRole } from '../../hooks/useSession'
+import useSession from '../../hooks/useSession'
 import { updateProfile, getUserStats, me } from '../../services/api'
 import './Profile.css';
 
-const roleOptions: { value: UserRole; label: string; description: string }[] = [
-  {
-    value: 'agriculteur',
-    label: 'Agriculteur',
-    description: 'Accédez à votre tableau de bord exploitation et à vos offres.',
-  },
-  {
-    value: 'acheteur-pro',
-    label: 'Acheteur Pro',
-    description: 'Gérez vos achats en gros et vos contrats.',
-  },
-  {
-    value: 'acheteur-particulier',
-    label: 'Acheteur Particulier',
-    description: 'Achetez des produits frais directement auprès des producteurs.',
-  },
-]
-
 export default function Profile() {
-  const { session, logout, updateUser, changeRole } = useSession()
+  const { session, logout, updateUser } = useSession()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
-  const [showRoleModal, setShowRoleModal] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(session.user?.role ?? null)
   const [profileImagePreview, setProfileImagePreview] = useState<string>(session.user?.profileImage ?? '')
 
   const buildInitialForm = (user: any) => ({
@@ -50,12 +30,6 @@ export default function Profile() {
       setProfileImagePreview(session.user.profileImage ?? '')
     }
   }, [session.user])
-
-  React.useEffect(() => {
-    if (session.user?.role) {
-      setSelectedRole(session.user.role)
-    }
-  }, [session.user?.role])
 
   if (!session.user) {
     return (
@@ -121,7 +95,7 @@ export default function Profile() {
             name: backendUser.name || backendUser.fullName || session.user?.name || 'Utilisateur',
             email: backendUser.email || session.user?.email || '',
             role: backendUser.role || session.user?.role || 'acheteur-particulier',
-            phone: backendUser.phone || session.user?.phone,
+            phone: backendUser.phone || backendUser.contact || session.user?.phone,
             gender: backendUser.gender || session.user?.gender,
             profileImage: backendUser.profileImage || session.user?.profileImage,
           }
@@ -187,21 +161,6 @@ export default function Profile() {
     navigate('/onboarding', { replace: true })
   }
 
-  const handleRoleSwitch = (nextRole: UserRole) => {
-    if (!session.user) {
-      return
-    }
-
-    if (session.user.role === nextRole) {
-      setShowRoleModal(false)
-      return
-    }
-
-    changeRole(nextRole)
-    setSelectedRole(nextRole)
-    setShowRoleModal(false)
-  }
-
   return (
     <section className="page">
       <div className="page-header">
@@ -238,17 +197,22 @@ export default function Profile() {
               <input type="file" accept="image/*" onChange={event => {
                 const file = event.target.files?.[0]
                 if (!file) return
+                if (!file.type.startsWith('image/')) {
+                  alert('Veuillez sélectionner une image valide.')
+                  event.target.value = ''
+                  return
+                }
+                if (file.size > 6 * 1024 * 1024) {
+                  alert('La photo doit faire moins de 6 Mo.')
+                  event.target.value = ''
+                  return
+                }
                 const reader = new FileReader()
                 reader.onload = () => setProfileImagePreview(String(reader.result))
                 reader.readAsDataURL(file)
               }} />
             </label>
             {profileImagePreview && <button type="button" className="profile-photo-remove" onClick={() => setProfileImagePreview('')}>Supprimer</button>}
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <button className="btn-small btn-small-outline" onClick={() => { setSelectedRole(session.user?.role ?? null); setShowRoleModal(true) }}>
-              <i className="fas fa-exchange-alt"></i> Changer rôle
-            </button>
           </div>
         </div>
 
@@ -381,54 +345,6 @@ export default function Profile() {
         </div>
       )}
 
-      {showRoleModal && (
-        <div className="auth-overlay" onClick={() => setShowRoleModal(false)}>
-          <div className="auth-modal" onClick={event => event.stopPropagation()} style={{ maxWidth: 720 }}>
-            <div className="card" style={{ padding: 24 }}>
-              <div className="page-header">
-                <div>
-                  <p className="eyebrow">CHANGER DE RÔLE</p>
-                  <h2>Choisissez votre nouveau profil</h2>
-                </div>
-              </div>
-              <p className="text-slate-600" style={{ marginBottom: 16 }}>
-                Ce changement met à jour votre rôle pour la session courante et l’affiche immédiatement dans l’interface.
-              </p>
-              <div className="role-grid">
-                {roleOptions.map(option => {
-                  const isSelected = selectedRole === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedRole(option.value)}
-                      className={`card card-clickable text-center ${isSelected ? 'selected-role' : ''}`}
-                    >
-                      <div className="role-card-header">
-                        <h3 className="text-xl font-semibold text-slate-900">{option.label}</h3>
-                      </div>
-                      <p className="mt-3 text-slate-600">{option.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="role-action" style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  className="btn-primary mt-6 w-full"
-                  disabled={!selectedRole}
-                  onClick={() => selectedRole && handleRoleSwitch(selectedRole)}
-                >
-                  Enregistrer le nouveau rôle
-                </button>
-                <button type="button" className="btn-small btn-small-outline" onClick={() => setShowRoleModal(false)} style={{ marginTop: 8 }}>
-                  Annuler
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

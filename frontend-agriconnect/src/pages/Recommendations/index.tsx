@@ -10,7 +10,8 @@ export default function Recommendations() {
   async function fetchRec() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/ai/recommendations/${productId}`)
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/ai/recommendations/${productId}`)
       if (!res.ok) throw new Error('fetch failed')
       const json = await res.json()
       setItems(json.recommendations || json || [])

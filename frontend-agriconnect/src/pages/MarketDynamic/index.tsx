@@ -1,58 +1,75 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import PriceDisplay from '../../components/PriceDisplay'
-import PriceChart from '../../components/PriceChart'
-import LimitOrderForm from '../../components/LimitOrderForm'
-import { getMarketPrices, getPriceHistory, getLimitOrders, buildNationalZoneSeries, getPriceForZone, type PriceData, type PriceHistoryData, type LimitOrder } from '../../services/api'
+import PredictiveChat from '../../components/PredictiveChat'
+import { getMarketPrices, getPriceForZone, type PriceData } from '../../services/api'
 import { useToasts } from '../../components/ToastProvider'
+import { findCatalogProduct, MARKET_CATALOG, MARKET_PRODUCT_LOCATIONS } from './marketCatalog'
 import './MarketDynamic.css';
+
+function buildCatalogPrices(remotePrices: PriceData[]) {
+  return MARKET_CATALOG.map(product => {
+    const remote = remotePrices.find(price => findCatalogProduct(price.productTitle)?.id === product.id)
+    return remote
+      ? { ...remote, productId: product.id, productTitle: product.name, category: remote.category || product.category, imageUrl: product.imageUrl, available: true }
+      : {
+          productId: product.id,
+          productTitle: product.name,
+          category: product.category,
+          currentPrice: 0,
+          previousPrice: 0,
+          priceChange: 0,
+          priceChangePercent: 0,
+          unit: 'kg',
+          timestamp: new Date().toISOString(),
+          trend: 'stable' as const,
+          aiInsight: 'Prix en attente de la marketplace.',
+          imageUrl: product.imageUrl,
+          available: false,
+        }
+  })
+}
 
 export default function MarketDynamic() {
   const toasts = useToasts()
   const [prices, setPrices] = useState<PriceData[]>([])
-  const [history, setHistory] = useState<PriceHistoryData[]>([])
-  const [orders, setOrders] = useState<LimitOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [marketNotice, setMarketNotice] = useState<string | null>(null)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [selectedZone, setSelectedZone] = useState('national')
+  const [showAiAnalysis, setShowAiAnalysis] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
+  const [selectedType, setSelectedType] = useState('all')
+  const [selectedRegion, setSelectedRegion] = useState('all')
+  const [selectedCity, setSelectedCity] = useState('all')
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'disabled'>('connecting')
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
-  const selectedProductIdRef = React.useRef<string | null>(null)
 
   // Charger les prix initialement
   useEffect(() => {
     const loadPrices = async () => {
       setLoading(true)
       try {
-        const [pricesResult, ordersResult] = await Promise.allSettled([
-          getMarketPrices(),
-          getLimitOrders(),
-        ])
+        const pricesResult = await Promise.allSettled([getMarketPrices()]).then(([result]) => result)
+
+        let remotePrices: PriceData[] = []
+
         if (pricesResult.status === 'fulfilled') {
-          const incomingPrices = Array.isArray(pricesResult.value.data.prices) ? pricesResult.value.data.prices : []
-          setPrices(incomingPrices)
-          setMarketNotice(pricesResult.value.data.meta?.message ?? null)
-        } else {
-          setPrices([])
-          setMarketNotice('Le service de marché est temporairement indisponible.')
+          remotePrices = Array.isArray(pricesResult.value.data.prices) ? pricesResult.value.data.prices : []
         }
-        if (ordersResult.status === 'fulfilled') {
-          setOrders(ordersResult.value.data.orders || [])
-        } else {
-          setOrders([])
-        }
+
+        const incomingPrices = buildCatalogPrices(remotePrices)
+
+        setPrices(incomingPrices)
+        setMarketNotice(
+          pricesResult.status === 'fulfilled'
+            ? pricesResult.value.data.meta?.message ?? null
+            : 'La marketplace est indisponible. Les produits AgriConnect restent visibles.'
+        )
+
       } finally {
         setLoading(false)
       }
     }
     loadPrices()
   }, [toasts])
-
-  // Mettre à jour la référence du produit sélectionné
-  useEffect(() => {
-    selectedProductIdRef.current = selectedProductId
-  }, [selectedProductId])
 
   useEffect(() => {
     setSelectedProductId(current => {
@@ -61,28 +78,6 @@ export default function MarketDynamic() {
     })
   }, [prices])
 
-  // Charger l'historique quand le produit change
-  useEffect(() => {
-    if (!selectedProductId) return
-
-    let active = true
-    setHistory([])
-    setHistoryLoading(true)
-    setHistoryError(null)
-    const loadHistory = async () => {
-      try {
-        const res = await getPriceHistory(selectedProductId)
-        if (active) setHistory(res.data.history)
-      } catch (err) {
-        if (active) setHistoryError('Historique momentanément indisponible.')
-      } finally {
-        if (active) setHistoryLoading(false)
-      }
-    }
-    loadHistory()
-    return () => { active = false }
-  }, [selectedProductId])
-
   // WebSocket pour les mises à jour en temps réel
   useEffect(() => {
     const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
@@ -90,7 +85,11 @@ export default function MarketDynamic() {
     const wsOrigin = apiUrl
       ? apiUrl.replace(/^http/, 'ws').replace(/\/api\/?$/, '')
       : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
-    const wsUrl = configuredWsUrl || `${wsOrigin}/market/price-update`
+    const wsUrl = configuredWsUrl
+      ? configuredWsUrl.replace(/\/$/, '').endsWith('/market/price-update')
+        ? configuredWsUrl
+        : `${configuredWsUrl.replace(/\/$/, '')}/market/price-update`
+      : `${wsOrigin}/market/price-update`
     let websocket: WebSocket | null = null
     let reconnectTimer: number | null = null
     let pollTimer: number | null = null
@@ -110,7 +109,7 @@ export default function MarketDynamic() {
     const refreshPrices = async () => {
       try {
         const res = await getMarketPrices()
-        setPrices(Array.isArray(res.data.prices) ? res.data.prices : [])
+        setPrices(buildCatalogPrices(Array.isArray(res.data.prices) ? res.data.prices : []))
         setMarketNotice(res.data.meta?.message ?? null)
       } catch (err) {
         console.error('Erreur lors du rafraîchissement des prix:', err)
@@ -126,6 +125,14 @@ export default function MarketDynamic() {
         websocket.onopen = () => {
           stopPolling()
           setWsStatus('connected')
+        }
+
+        websocket.onopen = () => {
+          stopPolling()
+          setWsStatus('connected')
+          if (prices.length > 0) {
+            setMarketNotice('Marché en ligne : prix synchronisés en temps réel.')
+          }
         }
 
         websocket.onmessage = (event) => {
@@ -149,8 +156,6 @@ export default function MarketDynamic() {
                     : p
                 )
               )
-            } else if (data.type === 'price_history' && data.productId === selectedProductIdRef.current) {
-              setHistory(data.history)
             }
           } catch (err) {
             console.error('Erreur parsing WebSocket:', err)
@@ -201,22 +206,10 @@ export default function MarketDynamic() {
     }
   }, [])
 
-  const selectedPrice = Array.isArray(prices) ? prices.find(p => p.productId === selectedProductId) : undefined
-  const selectedZoneSeries = selectedPrice ? buildNationalZoneSeries(selectedPrice) : undefined
-  const availableZones = useMemo(() => [
-    'national',
-    ...Array.from(new Set(prices.flatMap(price => price.regions?.map(region => region.zone) ?? []))),
-  ], [prices])
-  const selectedMarketPrice = selectedPrice ? getPriceForZone(selectedPrice, selectedZone) : undefined
-
-  useEffect(() => {
-    if (!availableZones.includes(selectedZone)) setSelectedZone('national')
-  }, [availableZones, selectedZone])
-
   const handleRefreshPrices = async () => {
     try {
       const res = await getMarketPrices()
-      setPrices(Array.isArray(res.data.prices) ? res.data.prices : [])
+      setPrices(buildCatalogPrices(Array.isArray(res.data.prices) ? res.data.prices : []))
       setMarketNotice(res.data.meta?.message ?? null)
       toasts.push({ type: 'success', title: 'Succès', message: 'Prix mis à jour.' })
     } catch (err) {
@@ -224,21 +217,27 @@ export default function MarketDynamic() {
     }
   }
 
-  const handleOrderCreated = async () => {
-    try {
-      const res = await getLimitOrders()
-      setOrders(res.data.orders || [])
-    } catch (err) {
-      console.error('Erreur lors du rechargement des ordres:', err)
-    }
-  }
+  const productTypes = useMemo(() => ['all', ...new Set(MARKET_CATALOG.map(product => product.category))], [])
+  const regions = useMemo(() => ['all', ...new Set(Object.values(MARKET_PRODUCT_LOCATIONS).flatMap(location => location.regions))], [])
+  const cities = useMemo(() => ['all', ...new Set(Object.values(MARKET_PRODUCT_LOCATIONS).flatMap(location => location.cities))], [])
+
+  const filteredPrices = prices.filter(price => {
+    const location = MARKET_PRODUCT_LOCATIONS[price.productId]
+    const query = appliedSearch.trim().toLocaleLowerCase('fr-FR')
+    const matchesSearch = !query || `${price.productTitle} ${price.category}`.toLocaleLowerCase('fr-FR').includes(query)
+    const matchesType = selectedType === 'all' || price.category === selectedType
+    const matchesRegion = selectedRegion === 'all' || location?.regions.includes(selectedRegion)
+    const matchesCity = selectedCity === 'all' || location?.cities.includes(selectedCity)
+    return matchesSearch && matchesType && matchesRegion && matchesCity
+  })
+  const selectedProduct = prices.find(price => price.productId === selectedProductId)
 
   return (
     <section className="page market-page">
       <div className="page-header market-header">
         <div>
           <h1><i className="fas fa-chart-line" style={{ color: 'var(--primary)' }}></i> Marché Dynamique</h1>
-          <div className="sub">Consultez les prix en direct et créez des ordres à prix limite</div>
+          <div className="sub">Consultez les prix en direct du marché</div>
         </div>
         <div className="actions market-header-actions">
           <span className="market-connection-status">
@@ -260,20 +259,6 @@ export default function MarketDynamic() {
         </div>
       )}
 
-      <div className="market-control-bar card">
-        <div>
-          <span className="market-kicker">Territoire de référence</span>
-          <h2>Comparer les prix par zone</h2>
-          <p>Les variations affichées correspondent aux cotations fournies pour la zone sélectionnée.</p>
-        </div>
-        <label className="market-zone-select">
-          <span>Région / zone</span>
-          <select value={selectedZone} onChange={event => setSelectedZone(event.target.value)}>
-            {availableZones.map(zone => <option key={zone} value={zone}>{zone === 'national' ? 'Moyenne nationale' : zone}</option>)}
-          </select>
-        </label>
-      </div>
-
       {loading ? (
         <div className="market-empty card" role="status">Chargement des prix...</div>
       ) : prices.length === 0 ? (
@@ -285,10 +270,6 @@ export default function MarketDynamic() {
         </div>
       ) : (
         <div className="market-grid">
-          <div className="market-left">
-            <PriceDisplay prices={prices} onSelectProduct={setSelectedProductId} selectedZone={selectedZone} />
-          </div>
-
           <div className="market-right">
             <div className="market-national-card card">
               <div className="market-section-heading">
@@ -299,33 +280,91 @@ export default function MarketDynamic() {
                 <span className="market-section-note">Prix observés à l'échelle du Cameroun</span>
               </div>
 
+              <form
+                className="market-search"
+                onSubmit={event => {
+                  event.preventDefault()
+                  setAppliedSearch(searchTerm)
+                }}
+              >
+                <label htmlFor="market-product-search">Rechercher un produit</label>
+                <div className="market-search-controls">
+                  <input
+                    id="market-product-search"
+                    type="search"
+                    value={searchTerm}
+                    onChange={event => setSearchTerm(event.target.value)}
+                    placeholder="Ex. maïs, tomate, cacao"
+                  />
+                  <button className="btn-primary" type="submit">
+                    <i className="fas fa-search" aria-hidden="true"></i>
+                    Rechercher
+                  </button>
+                </div>
+              </form>
+
+              <div className="market-filters" aria-label="Filtrer les produits par type, région et ville">
+                <label>
+                  Type de produit
+                  <select value={selectedType} onChange={event => setSelectedType(event.target.value)}>
+                    {productTypes.map(type => <option key={type} value={type}>{type === 'all' ? 'Tous les types' : type}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Région
+                  <select value={selectedRegion} onChange={event => setSelectedRegion(event.target.value)}>
+                    {regions.map(region => <option key={region} value={region}>{region === 'all' ? 'Toutes les régions' : region}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Ville
+                  <select value={selectedCity} onChange={event => setSelectedCity(event.target.value)}>
+                    {cities.map(city => <option key={city} value={city}>{city === 'all' ? 'Toutes les villes' : city}</option>)}
+                  </select>
+                </label>
+                <button
+                  className="btn-small btn-small-outline market-filter-reset"
+                  type="button"
+                  onClick={() => {
+                    setSelectedType('all')
+                    setSelectedRegion('all')
+                    setSelectedCity('all')
+                    setSearchTerm('')
+                    setAppliedSearch('')
+                  }}
+                >
+                  Réinitialiser
+                </button>
+              </div>
+
               <div className="market-product-grid">
-                {prices.map(price => {
+                {filteredPrices.map(price => {
                   const isSelected = selectedProductId === price.productId
-                  const regionalPrice = getPriceForZone(price, selectedZone)
-                  const zoneSpread = price.regions && price.regions.length > 1
-                    ? Math.max(...price.regions.map(zone => zone.price)) - Math.min(...price.regions.map(zone => zone.price))
-                    : 0
+                  const nationalPrice = getPriceForZone(price, 'national')
 
                   return (
                     <button
                       key={price.productId}
-                      onClick={() => setSelectedProductId(price.productId)}
+                      onClick={() => {
+                        setSelectedProductId(price.productId)
+                        setShowAiAnalysis(true)
+                      }}
                       style={{
                         textAlign: 'left',
                         border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-light)',
                         borderRadius: 12,
                         padding: 14,
-                        background: isSelected ? 'rgba(16, 185, 129, 0.08)' : 'white',
+                        background: isSelected ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-card)',
                         cursor: 'pointer',
                       }}
                     >
+                      <img src={price.imageUrl} alt={price.productTitle} loading="lazy" style={{ width: '100%', height: 132, borderRadius: 10, objectFit: 'cover', marginBottom: 12 }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <strong className="market-product-title">{price.productTitle}</strong>
                         <span className="badge success">{price.category}</span>
                       </div>
-                      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>
-                        {regionalPrice.price.toLocaleString('fr-FR')} FCFA
+                      <div className="market-price-value">
+                        {price.available === false ? 'Indisponible' : `${nationalPrice.price.toLocaleString('fr-FR')} FCFA`}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Évolution</span>
@@ -333,112 +372,54 @@ export default function MarketDynamic() {
                           style={{
                             fontSize: 12,
                             fontWeight: 700,
-                            color: price.priceChangePercent >= 0 ? 'var(--danger)' : 'var(--success)',
-                            background: price.priceChangePercent >= 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                            color: nationalPrice.change > 0 ? 'var(--success)' : nationalPrice.change < 0 ? 'var(--danger)' : 'var(--text-secondary)',
+                            background: nationalPrice.change > 0 ? 'rgba(46, 107, 65, 0.12)' : nationalPrice.change < 0 ? 'rgba(163, 59, 43, 0.12)' : 'rgba(74, 74, 66, 0.10)',
                             padding: '4px 8px',
                             borderRadius: 999,
                           }}
                         >
-                          {regionalPrice.change > 0 ? '+' : ''}{regionalPrice.change.toFixed(1)}%
+                          {nationalPrice.change > 0 ? '+' : ''}{nationalPrice.change.toFixed(1)}%
                         </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
-                        {regionalPrice.hasRegionalData ? `Écart entre zones : ${zoneSpread.toLocaleString('fr-FR')} FCFA` : 'Variation régionale non fournie'}
-                      </div>
-                      <div className="market-ai-note">
-                        <i className="fas fa-brain" aria-hidden="true"></i>
-                        <span><strong>Analyse IA :</strong> {price.aiInsight || 'Analyse de variation en attente des données du module IA.'}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        Unité : {price.unit}
                       </div>
                     </button>
                   )
                 })}
               </div>
+              {filteredPrices.length === 0 && (
+                <div className="market-empty market-search-empty" role="status">
+                  <i className="fas fa-search" aria-hidden="true"></i>
+                  <span>Aucun produit trouvé.</span>
+                </div>
+              )}
             </div>
 
-            {selectedPrice && (
-              <>
-                {historyLoading ? (
-                  <div className="market-substate card" role="status">Chargement de l’historique...</div>
-                ) : historyError ? (
-                  <div className="market-substate market-substate-error card">{historyError}</div>
-                ) : (
-                  <PriceChart
-                    productTitle={selectedPrice.productTitle}
-                    history={history}
-                    zoneSeries={selectedZoneSeries}
-                  />
-                )}
-
-                <LimitOrderForm
-                  productId={selectedPrice.productId}
-                  productTitle={selectedPrice.productTitle}
-                  currentPrice={selectedMarketPrice?.price ?? selectedPrice.currentPrice}
-                  unit={selectedPrice.unit}
-                  onOrderCreated={handleOrderCreated}
-                />
-
-                {/* Ordres limites actifs */}
-                <div className="market-orders-card card">
-                  <h2>
-                    <i className="fas fa-list"></i> Vos ordres limites
-                  </h2>
-
-                  {orders.length === 0 ? (
-                    <p style={{ color: 'var(--text-secondary)' }}>Aucun ordre pour le moment</p>
-                  ) : (
-                    <div className="orders-list">
-                      {orders.map(order => (
-                        <div
-                          key={order.id}
-                          className="order-item"
-                          style={{
-                            padding: 12,
-                            borderBottom: '1px solid var(--border-light)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <div className="order-item-main">
-                            <div className="order-item-title">
-                              {order.productTitle}
-                            </div>
-                            <div className="order-item-meta">
-                              {order.quantity} {order.unit} à {order.limitPrice.toLocaleString('fr-FR')} FCFA/unité
-                            </div>
-                          </div>
-                          <div className="order-item-status">
-                            <span
-                              className={`badge ${
-                                order.status === 'matched'
-                                  ? 'success'
-                                  : order.status === 'pending'
-                                    ? 'warning'
-                                    : 'danger'
-                              }`}
-                            >
-                              {order.status === 'matched'
-                                ? '✓ Exécuté'
-                                : order.status === 'pending'
-                                  ? '⏳ En attente'
-                                  : '✗ Annulé'}
-                            </span>
-                            {order.matchedAt && (
-                              <div className="order-item-date">
-                                {new Date(order.matchedAt).toLocaleDateString('fr-FR')}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+            {showAiAnalysis && selectedProduct && (
+              <div className="market-ai-modal-backdrop" role="presentation" onClick={() => setShowAiAnalysis(false)}>
+                <div className="market-ai-modal" role="dialog" aria-modal="true" aria-labelledby="market-ai-title" onClick={event => event.stopPropagation()}>
+                  <div className="market-ai-modal-header">
+                    <div>
+                      <span className="market-kicker">Analyse du produit</span>
+                      <h2 id="market-ai-title">{selectedProduct.productTitle}</h2>
                     </div>
-                  )}
+                    <button className="market-ai-close" type="button" aria-label="Fermer l’analyse IA" onClick={() => setShowAiAnalysis(false)}>
+                      <i className="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <PredictiveChat
+                    key={selectedProduct.productId}
+                    productName={selectedProduct.productTitle}
+                    regionName="Cameroun"
+                    siteData={{
+                      currentPrice: getPriceForZone(selectedProduct, 'national').price,
+                      forecast7: getPriceForZone(selectedProduct, 'national').price * (1 + selectedProduct.priceChangePercent / 100),
+                      delta7: selectedProduct.priceChangePercent,
+                    }}
+                    autoPrompt={`Analyse le prix national actuel du ${selectedProduct.productTitle} et donne-moi un conseil.`}
+                  />
                 </div>
-              </>
+              </div>
             )}
+
           </div>
         </div>
       )}

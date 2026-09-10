@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import './PredictiveChat.css'
-import { composePredictiveReply } from '../services/predictiveAgent'
+import { askAgricultureAssistant } from '../services/api'
+
+type SiteSignal = {
+  currentPrice?: number
+  forecast7?: number
+  delta7?: number
+  recommendation?: string
+  yieldGain?: number
+  productionEstimate?: number
+  droughtRisk?: number
+  weatherLabel?: string
+}
 
 type Message = {
   id: string
@@ -9,7 +20,7 @@ type Message = {
   ts: string
 }
 
-export default function PredictiveChat({ productName, regionName, autoPrompt }: { productName?: string; regionName?: string; autoPrompt?: string }) {
+export default function PredictiveChat({ productName, regionName, autoPrompt, siteData }: { productName?: string; regionName?: string; autoPrompt?: string; siteData?: SiteSignal }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -21,17 +32,22 @@ export default function PredictiveChat({ productName, regionName, autoPrompt }: 
   const [draft, setDraft] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const threadRef = useRef<HTMLDivElement | null>(null)
   const lastPromptRef = useRef<string | null>(null)
 
   const quickPrompts = useMemo(() => [
     'Quel sera le prix du maïs cette semaine ?',
     'Comment améliorer mon rendement ?',
-    'Quel conseil me donnez-vous pour vendre ?',
+    'Comment stocker ma récolte ?',
+    'Comment vendre au meilleur moment ?',
+    'Comment transporter mes produits ?',
+    'Quel engrais et quelle irrigation utiliser ?',
+    'Comment calculer ma marge avant de vendre ?',
   ], [])
 
   const sendMessage = async (value?: string) => {
     const message = (value ?? draft).trim()
-    if (!message) return
+    if (!message || isTyping) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -44,20 +60,28 @@ export default function PredictiveChat({ productName, regionName, autoPrompt }: 
     setDraft('')
     setIsTyping(true)
 
-    window.setTimeout(() => {
+    try {
+      const response = await askAgricultureAssistant(message)
       const assistantMessage: Message = {
         id: `${Date.now()}-assistant`,
         from: 'assistant',
-        text: composePredictiveReply(message, {
-          productName,
-          regionName,
-        }),
+        text: response.data.answer,
         ts: new Date().toISOString(),
       }
       setMessages(prev => [...prev, assistantMessage])
       setIsTyping(false)
       inputRef.current?.focus()
-    }, 700)
+    } catch (error: any) {
+      const assistantMessage: Message = {
+        id: `${Date.now()}-assistant-error`,
+        from: 'assistant',
+        text: error?.response?.data?.error || 'Le service IA est indisponible. Configurez le fournisseur LLM dans le backend.',
+        ts: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, assistantMessage])
+      setIsTyping(false)
+      inputRef.current?.focus()
+    }
   }
 
   useEffect(() => {
@@ -67,71 +91,68 @@ export default function PredictiveChat({ productName, regionName, autoPrompt }: 
     void sendMessage(autoPrompt)
   }, [autoPrompt])
 
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, isTyping])
+
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 420 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+    <div className="card predictive-chat-shell">
+      <div className="predictive-chat-header">
         <div>
           <strong>Assistant IA prédictif</strong>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Discutez avec l’IA pour obtenir des conseils de prédiction en temps réel.</div>
+          <div className="predictive-chat-subtitle">Conseils agricoles contextualisés pour {productName || 'votre exploitation'}{regionName ? ` · ${regionName}` : ''}.</div>
         </div>
-        <span style={{ fontSize: 12, color: 'var(--success)' }}><i className="fas fa-circle" style={{ fontSize: 8, marginRight: 6 }}></i>En ligne</span>
+        <span className={`predictive-chat-status ${isTyping ? 'is-busy' : ''}`}><i className="fas fa-circle" />{isTyping ? 'Analyse...' : 'Prêt'}</span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+      <div className="predictive-chat-prompts">
         {quickPrompts.map(prompt => (
           <button
             key={prompt}
-            onClick={() => sendMessage(prompt)}
-            className="btn-small btn-small-outline"
-            style={{ fontSize: 12 }}
+            type="button"
+            onClick={() => void sendMessage(prompt)}
+            className="predictive-chat-prompt"
+            disabled={isTyping}
           >
             {prompt}
           </button>
         ))}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div ref={threadRef} className="predictive-chat-thread">
         {messages.map(message => (
-          <div key={message.id} style={{ display: 'flex', justifyContent: message.from === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div
-              style={{
-                maxWidth: '85%',
-                padding: '10px 12px',
-                borderRadius: 12,
-                background: message.from === 'user' ? 'var(--primary)' : 'var(--bg-input)',
-                color: message.from === 'user' ? 'white' : 'var(--text-primary)',
-              }}
-            >
-              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
-                {message.from === 'user' ? 'Vous' : 'IA prédictive'}
-              </div>
+          <div key={message.id} className={`predictive-chat-row ${message.from}`}>
+            <div className={`predictive-chat-message ${message.from}`}>
+              <div className="predictive-chat-author">{message.from === 'user' ? 'Vous' : 'IA prédictive'}</div>
               <div>{message.text}</div>
             </div>
           </div>
         ))}
 
         {isTyping && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <div style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--bg-input)' }}>
-              L’IA réfléchit à votre question…
+          <div className="predictive-chat-row assistant">
+            <div className="predictive-chat-message assistant predictive-chat-typing">
+              <span className="predictive-chat-dots"><i /><i /><i /></span>
+              L’IA analyse votre question...
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      <div className="predictive-chat-compose">
         <input
           ref={inputRef}
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
-            if (e.key === 'Enter') sendMessage()
+            if (e.key === 'Enter') void sendMessage()
           }}
-          placeholder="Écrivez ici votre question à l’IA..."
-          style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-light)' }}
+          placeholder="Posez votre question..."
+          aria-label="Question pour l’assistant prédictif"
+          disabled={isTyping}
         />
-        <button className="btn-primary" onClick={() => sendMessage()}>
-          Envoyer
+        <button className="btn-primary" type="button" onClick={() => void sendMessage()} disabled={isTyping || !draft.trim()}>
+          {isTyping ? '...' : 'Envoyer'}
         </button>
       </div>
     </div>

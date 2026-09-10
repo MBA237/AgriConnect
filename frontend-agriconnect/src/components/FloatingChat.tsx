@@ -1,159 +1,148 @@
-import React, { useEffect, useState } from 'react'
-import { getChatConversations, getChatMessages, sendChatMessage } from '../services/api'
+import React, { useEffect, useRef, useState } from 'react'
+import api from '../services/api'
+import Chat from './Chat'
 import './FloatingChat.css'
-
-type ChatUser = {
-  id: string
-  fullName?: string
-  email?: string
-  role?: string
-  profileImage?: string
-}
 
 type ChatMessage = {
   id: string
-  from: string
+  from: 'user' | 'assistant'
   text: string
-  ts?: string
-}
-
-type Conversation = {
-  user: ChatUser
-  lastMessage: ChatMessage
-}
-
-function userName(user: ChatUser) {
-  return user.fullName || user.email || 'Utilisateur'
-}
-
-function initials(user: ChatUser) {
-  return userName(user).slice(0, 2).toUpperCase()
+  ts: string
 }
 
 export default function FloatingChat() {
-  const [open, setOpen] = useState(false)
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [text, setText] = useState('')
+  const [aiOpen, setAiOpen] = useState(false)
+  const [messagesOpen, setMessagesOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'assistant-welcome',
+      from: 'assistant',
+      text: 'Bonjour ! Je peux répondre à partir des données de AgriConnect : produits, contrats, prix et stocks actuels.',
+      ts: new Date().toISOString(),
+    },
+  ])
+  const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const loadConversations = async () => {
-    try {
-      const response = await getChatConversations()
-      setConversations(Array.isArray(response.data?.conversations) ? response.data.conversations : [])
-      setError('')
-    } catch {
-      setError('Impossible de charger les discussions.')
+  useEffect(() => {
+    if (aiOpen) inputRef.current?.focus()
+  }, [aiOpen])
+
+  const openAiPanel = () => {
+    setAiOpen(previous => !previous)
+    setMessagesOpen(false)
+  }
+
+  const openMessagesPanel = () => {
+    setMessagesOpen(previous => !previous)
+    setAiOpen(false)
+  }
+
+  const sendMessage = async (value?: string) => {
+    const text = (value ?? draft).trim()
+    if (!text || loading) return
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      from: 'user',
+      text,
+      ts: new Date().toISOString(),
     }
-  }
 
-  useEffect(() => {
-    if (!open) return
-    loadConversations()
-    const timer = window.setInterval(loadConversations, 15000)
-    return () => window.clearInterval(timer)
-  }, [open])
-
-  useEffect(() => {
-    if (!selectedUser) return
-    let active = true
+    setMessages(previous => [...previous, userMessage])
+    setDraft('')
     setLoading(true)
-    getChatMessages(selectedUser.id)
-      .then(response => {
-        if (active) setMessages(Array.isArray(response.data?.messages) ? response.data.messages : [])
-      })
-      .catch(() => {
-        if (active) setError('Impossible de charger cette discussion.')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => { active = false }
-  }, [selectedUser])
-
-  const selectConversation = (conversation: Conversation) => {
-    setSelectedUser(conversation.user)
-    setMessages([])
     setError('')
-  }
 
-  const handleSend = async () => {
-    if (!selectedUser || !text.trim() || sending) return
-    const messageText = text.trim()
-    setSending(true)
-    setError('')
     try {
-      const response = await sendChatMessage({ receiverId: selectedUser.id, text: messageText })
-      const message = response.data?.message
-      if (message) setMessages(previous => [...previous, message])
-      setText('')
-      await loadConversations()
-    } catch {
-      setError('Impossible d’envoyer le message.')
+      const response = await api.post('/ai/chat', { question: text })
+      const answer = response?.data?.answer || 'Je n’ai pas de réponse fiable pour cette question.'
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        from: 'assistant',
+        text: answer,
+        ts: new Date().toISOString(),
+      }
+      setMessages(previous => [...previous, assistantMessage])
+    } catch (err: any) {
+      console.error('Floating AI error:', err)
+      const serverMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Le service IA n’a pas répondu. Vérifiez la connexion au backend.'
+      setError(serverMessage)
     } finally {
-      setSending(false)
+      setLoading(false)
+      inputRef.current?.focus()
     }
   }
 
   return (
     <div className="floating-chat">
-      {open ? (
-        <section className="floating-chat-popup" aria-label="Discussions">
+      {aiOpen ? (
+        <section className="floating-chat-popup floating-ai-popup" aria-label="Assistant IA AgriConnect">
           <header className="floating-chat-header">
             <div>
-              <span className="floating-chat-kicker">Messagerie</span>
-              <strong>Vos discussions</strong>
+              <span className="floating-chat-kicker">Assistant IA</span>
+              <strong>AgriConnect AI</strong>
             </div>
-            <button type="button" className="floating-chat-close" onClick={() => setOpen(false)} aria-label="Fermer la messagerie">×</button>
+            <button type="button" className="floating-chat-close" onClick={() => setAiOpen(false)} aria-label="Fermer l’assistant">×</button>
           </header>
 
           <div className="floating-chat-body">
-            {!selectedUser ? (
-              <div className="conversation-list">
-                {conversations.length === 0 && !error ? <p className="chat-empty">Aucune discussion pour le moment.</p> : null}
-                {conversations.map(conversation => (
-                  <button type="button" className="conversation-row" key={conversation.user.id} onClick={() => selectConversation(conversation)}>
-                    {conversation.user.profileImage ? <img src={conversation.user.profileImage} alt="" className="conversation-avatar" /> : <span className="conversation-avatar conversation-initials">{initials(conversation.user)}</span>}
-                    <span className="conversation-copy">
-                      <strong>{userName(conversation.user)}</strong>
-                      <span>{conversation.lastMessage.text}</span>
-                    </span>
-                    <span className="conversation-arrow">›</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="chat-thread">
-                <button type="button" className="chat-back" onClick={() => setSelectedUser(null)}>← Toutes les discussions</button>
-                <div className="chat-contact"><strong>{userName(selectedUser)}</strong><span>{selectedUser.role || 'Utilisateur'}</span></div>
-                <div className="chat-thread-messages">
-                  {loading ? <p className="chat-empty">Chargement...</p> : null}
-                  {!loading && messages.length === 0 ? <p className="chat-empty">Commencez la discussion.</p> : null}
-                  {messages.map(message => (
-                    <div key={message.id} className={`chat-bubble ${message.from === 'me' ? 'outgoing' : 'incoming'}`}>
-                      <span>{message.text}</span>
-                      {message.ts ? <small>{new Date(message.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small> : null}
-                    </div>
-                  ))}
+            <div className="assistant-thread">
+              {messages.map(message => (
+                <div key={message.id} className={`assistant-bubble ${message.from}`}>
+                  <span>{message.text}</span>
+                  {message.ts ? <small>{new Date(message.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small> : null}
                 </div>
-                <div className="chat-compose">
-                  <input value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') handleSend() }} placeholder="Écrire une réponse..." aria-label="Votre message" />
-                  <button type="button" onClick={handleSend} disabled={sending || !text.trim()} aria-label="Envoyer">{sending ? '...' : '→'}</button>
-                </div>
-              </div>
-            )}
+              ))}
+              {loading ? <div className="assistant-bubble assistant"><span>Je consulte les données de la plateforme…</span></div> : null}
+            </div>
+
+            <div className="chat-compose">
+              <input
+                ref={inputRef}
+                value={draft}
+                onChange={event => setDraft(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') void sendMessage()
+                }}
+                placeholder="Posez une question à l’IA..."
+                aria-label="Question pour l’assistant IA"
+              />
+              <button type="button" onClick={() => void sendMessage()} disabled={loading || !draft.trim()} aria-label="Envoyer la question">
+                {loading ? '…' : '→'}
+              </button>
+            </div>
             {error ? <p className="chat-error">{error}</p> : null}
           </div>
         </section>
       ) : null}
 
-      <button type="button" className="floating-chat-trigger" onClick={() => setOpen(previous => !previous)} aria-label="Ouvrir les discussions" aria-expanded={open}>
-        <i className="floating-chat-icon fas fa-comments" aria-hidden="true"></i>
-        {conversations.length > 0 ? <span className="floating-chat-count">{conversations.length > 99 ? '99+' : conversations.length}</span> : null}
-      </button>
+      {messagesOpen ? (
+        <section className="floating-chat-popup floating-message-popup" aria-label="Messages AgriConnect">
+          <header className="floating-chat-header floating-message-header">
+            <div>
+              <span className="floating-chat-kicker">Messages</span>
+              <strong>Conversations</strong>
+            </div>
+            <button type="button" className="floating-chat-close" onClick={() => setMessagesOpen(false)} aria-label="Fermer les messages">×</button>
+          </header>
+          <div className="floating-message-body">
+            <Chat room="global" />
+          </div>
+        </section>
+      ) : null}
+
+      <div className="floating-chat-actions">
+        <button type="button" className="floating-chat-trigger floating-message-trigger" onClick={openMessagesPanel} aria-label="Ouvrir les messages" aria-expanded={messagesOpen}>
+          <i className="floating-chat-icon fas fa-comment-dots" aria-hidden="true"></i>
+        </button>
+
+        <button type="button" className="floating-chat-trigger" onClick={openAiPanel} aria-label="Ouvrir l’assistant IA" aria-expanded={aiOpen}>
+          <i className="floating-chat-icon fas fa-robot" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
   )
 }

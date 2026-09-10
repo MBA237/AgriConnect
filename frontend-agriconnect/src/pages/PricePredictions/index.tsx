@@ -15,13 +15,13 @@ export default function PricePredictions() {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch(`/api/ai/price-forecast/${productId}`)
+        const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/ai/price-forecast/${productId}`)
         if (!res.ok) throw new Error('fetch failed')
         const json = await res.json()
-        // expect { series: [{date,price}], current }
         const s = (json.series || json.data || []).map((p: any) => ({ x: p.date || p.x, y: Number(p.price ?? p.y) }))
         setSeries(s)
-        setCurrent(json.current ?? (s.length ? s[s.length - 1].y : null))
+        setCurrent(json.current ?? json.estimate ?? (s.length ? s[s.length - 1].y : null))
       } catch (e) {
         setSeries([])
         setCurrent(null)

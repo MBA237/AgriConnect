@@ -15,12 +15,13 @@ export default function YieldPredictions() {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch(`/api/ai/yield-forecast/${region}`)
+        const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/ai/yield-forecast/${region}`)
         if (!res.ok) throw new Error('fetch failed')
         const json = await res.json()
         const s = (json.series || json.data || []).map((p: any) => ({ x: p.date || p.x, y: Number(p.yield ?? p.y) }))
         setSeries(s)
-        setEstimate(json.estimate ?? (s.length ? s[s.length - 1].y : null))
+        setEstimate(json.estimate ?? json.current ?? (s.length ? s[s.length - 1].y : null))
       } catch (e) {
         setSeries([])
         setEstimate(null)

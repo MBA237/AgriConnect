@@ -40,12 +40,8 @@ export type PriceData = {
   trend: 'up' | 'down' | 'stable'
   regions?: ZonePricePoint[]
   aiInsight?: string
-}
-
-export type PriceHistoryData = {
-  timestamp: string
-  price: number
-  volume: number
+  imageUrl?: string
+  available?: boolean
 }
 
 export type ZonePricePoint = {
@@ -203,7 +199,7 @@ function normalizeUser(user: any, fallbackEmail?: string) {
     name,
     email,
     role: mapRoleToFrontend(user?.role),
-    phone: user?.phone || undefined,
+    phone: user?.phone || user?.contact || undefined,
     gender: user?.gender || undefined,
     profileImage: user?.profileImage || undefined,
     ...(user || {}),
@@ -266,12 +262,6 @@ function normalizePriceData(item: any): PriceData {
     regions,
     aiInsight: item?.aiInsight || item?.ai_insight || item?.forecast?.summary,
   }
-}
-
-function normalizeHistoryData(data: any) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.history)) return data.history
-  return []
 }
 
 export function buildNationalZoneSeries(price: PriceData): PriceZoneSeries {
@@ -471,6 +461,8 @@ export async function updateProfile(payload: any): Promise<{ data: any }> {
 
   try {
     const response = await api.put('/auth/me', backendPayload)
+    profileCache.profile = null
+    profileCache.profileTimestamp = 0
     return {
       ...response,
       data: {
@@ -491,6 +483,10 @@ export async function updateProfile(payload: any): Promise<{ data: any }> {
 
     throw error
   }
+}
+
+export async function askAgricultureAssistant(question: string): Promise<{ data: { answer: string; source: string } }> {
+  return api.post('/ai/chat', { question })
 }
 
 export async function getProducts(params?: Record<string, any>): Promise<{ data: { products: Product[] } }> {
@@ -633,7 +629,7 @@ export async function getMarketPrices(): Promise<{ data: { prices: PriceData[]; 
       ...marketCache.prices,
       data: {
         ...(marketCache.prices.data || {}),
-        meta: buildMarketMeta('cache', 'Données du marché affichées depuis le cache local.'),
+        meta: buildMarketMeta('cache'),
       },
     }
   }
@@ -730,28 +726,6 @@ export async function getUserStats(userId?: string): Promise<{ data: { rating: n
       contracts: contractsResponse.data.contracts.length,
       memberSinceYears: years,
     },
-  }
-}
-
-export async function getPriceHistory(productId: string): Promise<{ data: { history: PriceHistoryData[] } }> {
-  if (!hasStoredSession()) {
-    return { data: { history: [] } }
-  }
-
-  try {
-    const response = await api.get(`/market/history/${productId}`)
-    return {
-      ...response,
-      data: {
-        ...(response.data || {}),
-        history: normalizeHistoryData(response.data),
-      },
-    }
-  } catch (error: any) {
-    if (isRateLimited(error)) {
-      return { data: { history: [] } }
-    }
-    throw error
   }
 }
 
